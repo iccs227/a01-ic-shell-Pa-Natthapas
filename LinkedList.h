@@ -14,6 +14,6 @@ char* getItems(Node* LinkedList, int index);
 void addFirst(Node* LinkedList, char* item);
 void addLast(Node* LinkedList, char* item);
 void printLL(Node* LinkedList);
-
+Node* copy(Node* Sentinel);
 
 #endif

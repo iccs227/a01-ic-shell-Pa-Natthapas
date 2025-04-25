@@ -18,6 +18,9 @@ Node* LinkedList(){
 }
 
 void DeleteList(Node* Sentinel){
+    if (Sentinel == NULL){
+        return;
+    }
     Node* walk;
     int size = Sentinel->Size;
     for (int i = 0; i < size; i++){
@@ -81,6 +84,19 @@ void printLL(Node* Sentinel){
         printf("%s ", walk->items);
         walk = walk->next;
     }
+}
+
+Node* copy(Node* Sentinel){
+    Node* copy = LinkedList();
+    Node* walk = Sentinel;
+    int index = 0;
+    while (walk->next != NULL){
+        addLast(copy, strdup(getItems(Sentinel, index)));
+        // printf("%s", getItems(Sentinel, index));
+        walk = walk->next;
+        index++;
+    }
+    return copy;
 }
 
 // int main(){

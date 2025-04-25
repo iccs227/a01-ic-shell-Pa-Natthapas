@@ -10,13 +10,10 @@
 
 void splitString(char* buffer, Node* Sentinel){
     char* token = strtok(buffer, " "); //Get the first part.
-    addLast(Sentinel, token);
     while (token != NULL){
-        token = strtok(NULL, " "); //Get the rest into the list.
         addLast(Sentinel, token);
-        
+        token = strtok(NULL, " "); //Get the rest into the list.
     }
-    // printLL(Sentinel);
 }
 
 
@@ -30,27 +27,42 @@ void echo(Node* instruct){
     printf("\n");
 }
 
-void checkCm(Node* instruct){
-    char* command = getItems(instruct, 0);
+
+void checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
+    Node* current = instruct[oldNew];
+    char* command = getItems(current, 0);
+   
     if ( strcmp(command, "echo") == 0 ){
-        echo(instruct);
+        echo(instruct[oldNew]);
     }
     else if ( strcmp(command, "!!") == 0 ){
-        
-    }
+        if (instruct[1] == NULL){
+            return;
+        }
+        checkCm(instruct, 1);
+    }   
+
 }
 
 int main() {
     char buffer[MAX_CMD_BUFFER];
-    Node* instruct;
+    Node* instruct = NULL;
+    Node* prevInstruct = NULL;
+    Node* Instructions[2];
 
     while (1) {
         instruct = LinkedList();
         printf("icsh $ ");
         fgets(buffer, 255, stdin);
-        splitString(buffer, instruct); //Turn the string into a list
-        checkCm(instruct); //Check the commands and runs it
+        buffer[strcspn(buffer, "\n")] = 0;
 
-        // printf("you said: %s\n", buffer);
+        splitString(buffer, instruct); //Turn the string into a list
+        
+        Instructions[0] = instruct;
+        Instructions[1] = prevInstruct;
+
+        checkCm(Instructions, 0); //Check the commands and runs it
+        // DeleteList(prevInstruct);
+        prevInstruct = instruct;
     }
 }
