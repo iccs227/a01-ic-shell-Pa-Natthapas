@@ -28,7 +28,7 @@ void echo(Node* instruct){
 }
 
 
-void checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
+int checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
     Node* current = instruct[oldNew];
     char* command = getItems(current, 0);
    
@@ -37,7 +37,7 @@ void checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
     }
     else if ( strcmp(command, "!!") == 0 ){
         if (instruct[1] == NULL){
-            return;
+            return 1;
         }
         
         for (int i=0;i<getSize(instruct[1]); i++){
@@ -46,12 +46,19 @@ void checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
         }
         printf("%s ", getItems(instruct[1], i));
     }
-    printf("\n");
-
+        printf("\n");
         checkCm(instruct, 1);
+        return 1;
     }   
-    
+
+    else{
+        printf("Bad Command! >:(\n");
+        return 1; // Mark for like skipping the copy thing
+    }
+
+    return 0; // The Function is not skipped, meaning it will be copied.
 }
+
 
 int main() {
     char buffer[MAX_CMD_BUFFER];
@@ -62,17 +69,22 @@ int main() {
     while (1) {
         instruct = LinkedList();
         printf("icsh $ ");
+
         fgets(buffer, 255, stdin);
         buffer[strcspn(buffer, "\n")] = 0;
+
         splitString(buffer, instruct); //Turn the string into a list
         
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
-        checkCm(Instructions, 0); //Check the commands and runs it
-        if (strcmp(buffer, "!!") == 0){
+        int mode = checkCm(Instructions, 0); //Check the commands and runs it
+
+        if (mode == 1){
             continue;
         }
-        prevInstruct = copy(instruct);
+        else if (mode == 0){
+            prevInstruct = copy(instruct);
+        }
     }
 }
