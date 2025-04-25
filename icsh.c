@@ -39,9 +39,18 @@ void checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
         if (instruct[1] == NULL){
             return;
         }
+        
+        for (int i=0;i<getSize(instruct[1]); i++){
+        if (getItems(instruct[1], i) == NULL){
+            break;
+        }
+        printf("%s ", getItems(instruct[1], i));
+    }
+    printf("\n");
+
         checkCm(instruct, 1);
     }   
-
+    
 }
 
 int main() {
@@ -55,14 +64,15 @@ int main() {
         printf("icsh $ ");
         fgets(buffer, 255, stdin);
         buffer[strcspn(buffer, "\n")] = 0;
-
         splitString(buffer, instruct); //Turn the string into a list
         
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
         checkCm(Instructions, 0); //Check the commands and runs it
-        // DeleteList(prevInstruct);
-        prevInstruct = instruct;
+        if (strcmp(buffer, "!!") == 0){
+            continue;
+        }
+        prevInstruct = copy(instruct);
     }
 }
