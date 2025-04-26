@@ -71,7 +71,6 @@ int main(int argc, char* argv[]) {
         while (fgets(buffer, sizeof(buffer), fptr)){
             instruct = LinkedList();
             buffer[strcspn(buffer, "\n")] = 0;
-            fflush(stdout);
 
             splitString(buffer, instruct); //Turn the string into a list
             Instructions[0] = instruct;
