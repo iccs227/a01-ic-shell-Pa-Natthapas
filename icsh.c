@@ -35,6 +35,9 @@ int checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
     if ( strcmp(command, "echo") == 0 ){
         echo(instruct[oldNew]);
     }
+    else if ( strcmp(command, "exit") == 0 ){
+        return 2;
+    }
     else if ( strcmp(command, "!!") == 0 ){
         if (instruct[1] == NULL){
             return 1;
@@ -55,7 +58,6 @@ int checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
         printf("Bad Command! >:(\n");
         return 1; // Mark for like skipping the copy thing
     }
-
     return 0; // The Function is not skipped, meaning it will be copied.
 }
 
@@ -65,7 +67,7 @@ int main() {
     Node* instruct = NULL;
     Node* prevInstruct = NULL;
     Node* Instructions[2];
-
+    uint8_t exit = 0;
     while (1) {
         instruct = LinkedList();
         printf("icsh $ ");
@@ -80,11 +82,20 @@ int main() {
 
         int mode = checkCm(Instructions, 0); //Check the commands and runs it
 
+        
         if (mode == 1){
             continue;
         }
         else if (mode == 0){
             prevInstruct = copy(instruct);
         }
+        else if (mode == 2){
+            exit = (u_int8_t)atoi(getItems(instruct, 1));
+
+            printf("bye lol");
+            break;
+        }
     }
+
+    return exit;
 }
