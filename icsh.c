@@ -107,7 +107,7 @@ uint8_t main(int argc, char* argv[]) {
             if (mode == 1){ // !!
                 continue;
             }
-            else if (mode == 0){ //Normal case
+            else if (mode == 0){ //Normal case, does not work for outside process.
                 strcpy(prevInstruct, instruct);
             }
             else if (mode == 2){ //Exit
