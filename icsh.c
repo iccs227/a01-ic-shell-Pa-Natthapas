@@ -2,127 +2,146 @@
  * Name:
  * StudentID:
  */
-#include "LinkedList.h"
+// #include "LinkedList.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+// #include <process.h>
+
 #define MAX_CMD_BUFFER 255
 
-void splitString(char* buffer, Node* Sentinel){
-    char* token = strtok(buffer, " "); //Get the first part.
-    while (token != NULL){
-        addLast(Sentinel, token);
-        token = strtok(NULL, " "); //Get the rest into the list.
+int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
+    char* prog_arv[255];
+    char* command = strtok(instruct, " "); //First part of the instruct, command part.
+    int retVal;
+
+    prog_arv[0] = strcat("/bin/", command);
+
+    int index = 1;
+    while (command != NULL){
+        prog_arv[index] = strtok(NULL, " "); 
+        index++;
     }
+    prog_arv[index+1] = NULL;
+
+    int pid = fork();
+
+    if (pid == 0){
+        //child process
+        int retVal = execvp(prog_arv[0],prog_arv); // will run the whole list 
+    }
+
+    waitpid(pid, NULL, 0);
+    if (retVal == -1){ //File not found 
+        return -1;
+    }
+    return 0;
+    //main process
 }
 
 
-void echo(Node* instruct){
-    for (int i=1;i<getSize(instruct); i++){
-        if (getItems(instruct, i) == NULL){
-            break;
+void echo(char* instruct){ //Printing stuff
+        for (int i=5;i<strlen(instruct); i++){ 
+            printf("%c", instruct[i]);
         }
-        // printf("%d ", i);
-        // printf("%s \n", getItems(instruct, 1));
-        printf("%s ", getItems(instruct, i));
-    }
-    printf("\n");
-}
-
-
-int checkCm(Node* instruct[], int oldNew){ //1 for current 0 for prev
-    Node* current = instruct[oldNew];
-    char* command = getItems(current, 0);
-
-    if ( strcmp(command, "echo") == 0 ){
-        echo(instruct[oldNew]);
+        printf("\n");
     }
 
-    else if ( strcmp(command, "exit") == 0 ){ //Signal for exit
+
+int checkCm(char* commands[], int oldNew){ // 0 is current com, 1 is prev
+
+    if ( strncmp( commands[oldNew], "echo", 4 ) == 0 ){
+        echo(commands[oldNew]);
+        return 0;
+    }
+
+    else if ( strncmp( commands[oldNew], "exit", 4 ) == 0 ){
         return 2;
     }
 
-    else if ( strcmp(command, "!!") == 0 ){ //repeat
-        if (instruct[1] == NULL){ //If prev command does not exit
+    else if ( strncmp(commands[0], "!!", 2) == 0 ){
+        if (commands[1] == NULL){
             return 1;
         }
-        checkCm(instruct, 1);
+        checkCm(commands, 1);
         return 1;
-    }   
+    }
 
     else{
-        printf("Bad Command! >:(\n");
-        return 1; // Mark for like skipping the copy thing
+        int isExist = outsideProcess(commands[oldNew]);
+        if (isExist == -1){
+            return 0
+        }
+        printf("Command does not exist u baka. >:(\n");
+        return 1;
     }
-    return 0; // The Function is not skipped, meaning it will be copied.
-
 }
 
-int main(int argc, char* argv[]) {
+
+uint8_t main(int argc, char* argv[]) {
     char buffer[MAX_CMD_BUFFER];
-    Node* instruct = NULL;
-    Node* prevInstruct = NULL;
-    Node* Instructions[2];
+    char instruct[MAX_CMD_BUFFER];
+    char prevInstruct[MAX_CMD_BUFFER];
+    char temp[MAX_CMD_BUFFER];
+
+    char* Instructions[2] = {NULL, NULL};
+
     uint8_t exit = 0;
 
     if (argc > 1){ // script mode
-        
         FILE *fptr = fopen(argv[1], "r");
         while (fgets(buffer, sizeof(buffer), fptr)){
-            instruct = LinkedList();
             buffer[strcspn(buffer, "\n")] = 0;
 
-            splitString(buffer, instruct); //Turn the string into a list
+            strcpy(instruct, buffer);
+
             Instructions[0] = instruct;
             Instructions[1] = prevInstruct;
 
             int mode = checkCm(Instructions, 0); //Check the commands and runs it
             
-
-            if (mode == 1){// !!
+            if (mode == 1){ // !!
                 continue;
             }
-            else if (mode == 0){
-                prevInstruct = copy(instruct);
+            else if (mode == 0){ //Normal case
+                strcpy(prevInstruct, instruct);
             }
-            else if (mode == 2){
-                exit = (u_int8_t)atoi(getItems(instruct, 1));
-                printf("bye lol\n");
+            else if (mode == 2){ //Exit
+                exit = atoi(strncpy(temp, instruct+4, 251));
+                printf("bye lol");
                 break;
             }
         }    
         fclose(fptr);
-        return exit;  
+        return (uint8_t)exit;  
     };
 
 
-    while (1) {      //Normal mode, user input thing                
-
-        instruct = LinkedList();
+    while (1) {  //Normal mode, user input thing                
 
         printf("icsh $ ");
 
         fgets(buffer, 255, stdin);
         buffer[strcspn(buffer, "\n")] = 0;
-
-        splitString(buffer, instruct); //Turn the string into a list
+        
+        strcpy(instruct, buffer);
         
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
-
-        int mode = checkCm(Instructions, 0); //Check the commands and runs it
         
+        int mode = checkCm(Instructions, 0); //Check the commands and runs it
+
         if (mode == 1){ // !!
             continue;
         }
         else if (mode == 0){ //Normal case
-            prevInstruct = copy(instruct);
+            strcpy(prevInstruct, instruct);
         }
         else if (mode == 2){ //Exit
-            exit = (u_int8_t)atoi(getItems(instruct, 1));
+            exit = atoi(strncpy(temp, instruct+4, 251));
             printf("bye lol");
             break;
         }
     }
-    return exit;
+    return (uint8_t)exit;
 }
