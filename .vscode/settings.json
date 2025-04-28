@@ -4,7 +4,8 @@
         "*.ndjson": "jsonl",
         "*.dbclient-js": "javascript",
         "stdlib.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "cstdlib": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

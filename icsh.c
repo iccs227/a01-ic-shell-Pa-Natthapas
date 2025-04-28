@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdint.h>
-// #include <process.h>
 
 #define MAX_CMD_BUFFER 255
 
@@ -17,25 +16,27 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     char* prog_arv[255];
     char* command = strtok(instruct, " "); //First part of the instruct, command part.
     int retVal;
-
-    prog_arv[0] = strcat("/bin/", command);
+   
+    char str[100] = "/usr/bin/";
+    prog_arv[0] = strcat(str, command);
 
     int index = 1;
     while (command != NULL){
-        prog_arv[index] = strtok(NULL, " "); 
+        command = strtok(NULL, " ");
+        prog_arv[index] = command;
         index++;
     }
-    prog_arv[index+1] = NULL;
 
+    
     int pid = fork();
 
     if (pid == 0){
         //child process
-        int retVal = execvp(prog_arv[0],prog_arv); // will run the whole list 
+        execvp(prog_arv[0],prog_arv); // will run the whole list 
     }
 
-    waitpid(pid, NULL, 0);
-    if (retVal == -1){ //File not found 
+    int check = waitpid(pid, NULL, 0);
+    if (check == -1){ //File not found 
         return -1;
     }
     return 0;
@@ -72,7 +73,7 @@ int checkCm(char* commands[], int oldNew){ // 0 is current com, 1 is prev
 
     else{
         int isExist = outsideProcess(commands[oldNew]);
-        if (isExist == -1){
+        if (isExist == 0){
             return 0;
         }
         printf("Command does not exist u baka. >:(\n");
@@ -111,7 +112,7 @@ uint8_t main(int argc, char* argv[]) {
             }
             else if (mode == 2){ //Exit
                 exit = atoi(strncpy(temp, instruct+4, 251));
-                printf("bye lol");
+                printf("bye lol\n");
                 break;
             }
         }    
