@@ -52,28 +52,20 @@ void echo(char* instruct){ //Printing stuff
     }
 
 
-int checkCm(char* commands[], int oldNew){ // 0 is current com, 1 is prev
+int checkCm(char* commands){ // 0 is current com, 1 is prev
 
-    if ( strncmp( commands[oldNew], "echo", 4 ) == 0 ){
-        echo(commands[oldNew]);
+    if ( strncmp( commands, "echo", 4 ) == 0 ){
+        echo(commands);
         return 0;
     }
 
-    else if ( strncmp( commands[oldNew], "exit", 4 ) == 0 ){
+    else if ( strncmp( commands, "exit", 4 ) == 0 ){
         return 2;
     }
 
-    else if ( strncmp(commands[0], "!!", 2) == 0 ){
-        if (commands[1] == NULL){
-            return 1;
-        }
-        checkCm(commands, 1);
-        return 1;
-    }
-
     else{
-        int isExist = outsideProcess(commands[oldNew]);
-        if (isExist == 0){
+        int isExist = outsideProcess(commands);
+        if (isExist == 0){ //does exist
             return 0;
         }
         printf("Command does not exist u baka. >:(\n");
@@ -89,7 +81,7 @@ uint8_t main(int argc, char* argv[]) {
     char temp[MAX_CMD_BUFFER];
 
     char* Instructions[2] = {NULL, NULL};
-
+    int mode;
     uint8_t exit = 0;
 
     if (argc > 1){ // script mode
@@ -102,12 +94,20 @@ uint8_t main(int argc, char* argv[]) {
             Instructions[0] = instruct;
             Instructions[1] = prevInstruct;
 
-            int mode = checkCm(Instructions, 0); //Check the commands and runs it
-            
-            if (mode == 1){ // !!
+            if ( strncmp(Instructions[0], "!!", 2) == 0 ){
+                mode = checkCm(Instructions[1]); //get like !!
+                continue;
+            }
+            else{
+                mode = checkCm(Instructions[0]); //Check the commands and runs it
+            }
+
+
+            if (mode == 1){ // !! does not keep prev
                 continue;
             }
             else if (mode == 0){ //Normal case, does not work for outside process.
+                printf("hi from mode==0\n");
                 strcpy(prevInstruct, instruct);
             }
             else if (mode == 2){ //Exit
@@ -133,7 +133,13 @@ uint8_t main(int argc, char* argv[]) {
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
         
-        int mode = checkCm(Instructions, 0); //Check the commands and runs it
+        if ( strncmp(Instructions[0], "!!", 2) == 0 ){
+            mode = checkCm(Instructions[1]); //get like !!
+            continue;
+            }
+        else{
+            mode = checkCm(Instructions[0]); //Check the commands and runs it
+        }
 
         if (mode == 1){ // !!
             continue;
