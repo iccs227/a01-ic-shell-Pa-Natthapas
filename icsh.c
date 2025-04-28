@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdint.h>
 // #include <process.h>
 
 #define MAX_CMD_BUFFER 255
@@ -70,7 +73,7 @@ int checkCm(char* commands[], int oldNew){ // 0 is current com, 1 is prev
     else{
         int isExist = outsideProcess(commands[oldNew]);
         if (isExist == -1){
-            return 0
+            return 0;
         }
         printf("Command does not exist u baka. >:(\n");
         return 1;
@@ -114,7 +117,7 @@ uint8_t main(int argc, char* argv[]) {
         }    
         fclose(fptr);
         return (uint8_t)exit;  
-    };
+    }
 
 
     while (1) {  //Normal mode, user input thing                
