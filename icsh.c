@@ -9,14 +9,17 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdint.h>
+#include <signal.h>
 
 #define MAX_CMD_BUFFER 255
+
+
+pid_t pid;
 
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     char* prog_arv[255];
     char* command = strtok(instruct, " "); //First part of the instruct, command part.
-    int retVal;
-   
+
     char str[100] = "/usr/bin/";
     prog_arv[0] = strcat(str, command);
 
@@ -28,7 +31,7 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     }
 
     
-    int pid = fork();
+    pid = fork();
 
     if (pid == 0){
         //child process
@@ -59,66 +62,91 @@ int checkCm(char* commands){ // 0 is current com, 1 is prev
         return 0;
     }
 
-    else if ( strncmp( commands, "exit", 4 ) == 0 ){
-        return 2;
-    }
-
     else{
         int isExist = outsideProcess(commands);
         if (isExist == 0){ //does exist
             return 0;
         }
-        printf("Command does not exist u baka. >:(\n");
-        return 1;
     }
+    return -1; // command does not exist
 }
 
+void handle_sigint(int sig){ //ctrl c, end running process, child
+    if (getpid() > 0){
+        return;
+    }
+    kill(pid, SIGINT); //kill child process
+}
 
-uint8_t main(int argc, char* argv[]) {
+void handle_sigtstp(int sig){ //ctrl z move shit to background 
+    if (pid > 0){
+        return;
+    }
+    kill(pid, SIGTSTP);
+}  
+
+int main(int argc, char* argv[]) {
     char buffer[MAX_CMD_BUFFER];
     char instruct[MAX_CMD_BUFFER];
     char prevInstruct[MAX_CMD_BUFFER];
     char temp[MAX_CMD_BUFFER];
 
+    
     char* Instructions[2] = {NULL, NULL};
     int mode;
     uint8_t exit = 0;
 
-    if (argc > 1){ // script mode
-        FILE *fptr = fopen(argv[1], "r");
-        while (fgets(buffer, sizeof(buffer), fptr)){
-            buffer[strcspn(buffer, "\n")] = 0;
 
-            strcpy(instruct, buffer);
+    signal(SIGINT, handle_sigint);
+    signal(SIGTSTP, handle_sigtstp);
 
-            Instructions[0] = instruct;
-            Instructions[1] = prevInstruct;
+    // if (argc > 1){ // script mode
+    //     FILE *fptr = fopen(argv[1], "r");
+    //     while (fgets(buffer, sizeof(buffer), fptr)){
+    //         buffer[strcspn(buffer, "\n")] = 0;
 
-            if ( strncmp(Instructions[0], "!!", 2) == 0 ){
-                mode = checkCm(Instructions[1]); //get like !!
-                continue;
-            }
-            else{
-                mode = checkCm(Instructions[0]); //Check the commands and runs it
-            }
+    //         strcpy(instruct, buffer);
+
+    //         Instructions[0] = instruct;
+    //         Instructions[1] = prevInstruct;
+
+    //         if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
+    //             exit = atoi(strncpy(temp, instruct+4, 251));
+    //             printf("bye lol\n");
+    //             break;
+    //         }
+
+    //         if ( strncmp(Instructions[0], "!!", 2) == 0 ){
+    //             mode = checkCm(Instructions[1]); //get like !!
+    //             continue;
+    //         }
+    //         else{
+    //             mode = checkCm(Instructions[0]); //Check the commands and runs it
+    //         }
+
+    
+    //         if (mode == 1){ // case where copy does not req.
+    //             continue;
+    //         }
+    //         else if (mode == 0){ //Normal case
+    //             strcpy(prevInstruct, instruct);
+    //         }
 
 
-            if (mode == 1){ // !! does not keep prev
-                continue;
-            }
-            else if (mode == 0){ //Normal case, does not work for outside process.
-                // printf("hi from mode==0\n");
-                strcpy(prevInstruct, instruct);
-            }
-            else if (mode == 2){ //Exit
-                exit = atoi(strncpy(temp, instruct+4, 251));
-                printf("bye lol\n");
-                break;
-            }
-        }    
-        fclose(fptr);
-        return (uint8_t)exit;  
-    }
+    //         if (mode == 1){ // !! does not keep prev
+    //             continue;
+    //         }
+    //         else if (mode == 0){ //Normal case, does not work for outside process.
+    //             // printf("hi from mode==0\n");
+    //             strcpy(prevInstruct, instruct);
+    //         }
+    //         else if (mode == -1){
+    //             printf("Command does not exist u dumb >:(\n");
+    //         }
+    //     }    
+    //     fclose(fptr);
+    //     return (uint8_t)exit;  
+    // }
 
 
     while (1) {  //Normal mode, user input thing                
@@ -132,6 +160,12 @@ uint8_t main(int argc, char* argv[]) {
         
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
+
+        if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
+            exit = atoi(strncpy(temp, instruct+4, 251));
+            printf("bye lol\n");
+            break;
+        }
         
         if ( strncmp(Instructions[0], "!!", 2) == 0 ){
             mode = checkCm(Instructions[1]); //get like !!
@@ -141,17 +175,17 @@ uint8_t main(int argc, char* argv[]) {
             mode = checkCm(Instructions[0]); //Check the commands and runs it
         }
 
-        if (mode == 1){ // !!
+
+        if (mode == 1){ // case where cpy is not req.
             continue;
         }
         else if (mode == 0){ //Normal case
             strcpy(prevInstruct, instruct);
         }
-        else if (mode == 2){ //Exit
-            exit = atoi(strncpy(temp, instruct+4, 251));
-            printf("bye lol");
-            break;
+        else if (mode == -1){
+            printf("Command does not exist u dumb >:(\n");
         }
     }
+
     return (uint8_t)exit;
 }
