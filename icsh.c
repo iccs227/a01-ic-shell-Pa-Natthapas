@@ -35,12 +35,35 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
 
     if (pid == 0){
         //child process
-        execvp(prog_arv[0],prog_arv); // will run the whole list 
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTSTP, SIG_DFL);
+        int err = execvp(prog_arv[0],prog_arv); // will run the whole list 
+        if (err == -1){
+            return -1;
+        }
+        //this replace the memory iff it is successful 
     }
 
-    int check = waitpid(pid, NULL, 0);
-    if (check == -1){ //File not found 
-        return -1;
+    int status;
+    wait(&status);
+
+    int Stopped = 0;
+    if (WIFSTOPPED(status)){
+        Stopped = pid;
+    }
+
+
+
+    //3 cases 
+    //1 is if program dne, 2 ping is found but error
+    if (WIFEXITED(status)){ //if true then it means it exited normally
+        int statusCode = WEXITSTATUS(status);
+        if (statusCode == 0){
+            return 0;
+        }
+        else{
+            return -1;
+        }
     }
     return 0;
     //main process
@@ -71,20 +94,6 @@ int checkCm(char* commands){ // 0 is current com, 1 is prev
     return -1; // command does not exist
 }
 
-void handle_sigint(int sig){ //ctrl c, end running process, child
-    if (getpid() > 0){
-        return;
-    }
-    kill(pid, SIGINT); //kill child process
-}
-
-void handle_sigtstp(int sig){ //ctrl z move shit to background 
-    if (pid > 0){
-        return;
-    }
-    kill(pid, SIGTSTP);
-}  
-
 int main(int argc, char* argv[]) {
     char buffer[MAX_CMD_BUFFER];
     char instruct[MAX_CMD_BUFFER];
@@ -97,8 +106,9 @@ int main(int argc, char* argv[]) {
     uint8_t exit = 0;
 
 
-    signal(SIGINT, handle_sigint);
-    signal(SIGTSTP, handle_sigtstp);
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
 
     // if (argc > 1){ // script mode
     //     FILE *fptr = fopen(argv[1], "r");
@@ -150,7 +160,7 @@ int main(int argc, char* argv[]) {
 
 
     while (1) {  //Normal mode, user input thing                
-
+        fflush(stdin);
         printf("icsh $ ");
 
         fgets(buffer, 255, stdin);
