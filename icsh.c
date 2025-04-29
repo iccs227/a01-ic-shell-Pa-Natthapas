@@ -37,6 +37,7 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
         //child process
         signal(SIGINT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL);
+        // tcsetpgrp(STDIN_FILENO, getpid()); //sets the child as foreground 
         int err = execvp(prog_arv[0],prog_arv); // will run the whole list 
         if (err == -1){
             return -1;
@@ -46,6 +47,7 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
 
     int status;
     wait(&status);
+    tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
 
     int Stopped = 0;
     if (WIFSTOPPED(status)){
@@ -110,53 +112,53 @@ int main(int argc, char* argv[]) {
     signal(SIGTSTP, SIG_IGN);
 
 
-    // if (argc > 1){ // script mode
-    //     FILE *fptr = fopen(argv[1], "r");
-    //     while (fgets(buffer, sizeof(buffer), fptr)){
-    //         buffer[strcspn(buffer, "\n")] = 0;
+    if (argc > 1){ // script mode
+        FILE *fptr = fopen(argv[1], "r");
+        while (fgets(buffer, sizeof(buffer), fptr)){
+            buffer[strcspn(buffer, "\n")] = 0;
 
-    //         strcpy(instruct, buffer);
+            strcpy(instruct, buffer);
 
-    //         Instructions[0] = instruct;
-    //         Instructions[1] = prevInstruct;
+            Instructions[0] = instruct;
+            Instructions[1] = prevInstruct;
 
-    //         if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
-    //             exit = atoi(strncpy(temp, instruct+4, 251));
-    //             printf("bye lol\n");
-    //             break;
-    //         }
+            if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
+                exit = atoi(strncpy(temp, instruct+4, 251));
+                printf("bye lol\n");
+                break;
+            }
 
-    //         if ( strncmp(Instructions[0], "!!", 2) == 0 ){
-    //             mode = checkCm(Instructions[1]); //get like !!
-    //             continue;
-    //         }
-    //         else{
-    //             mode = checkCm(Instructions[0]); //Check the commands and runs it
-    //         }
+            if ( strncmp(Instructions[0], "!!", 2) == 0 ){
+                mode = checkCm(Instructions[1]); //get like !!
+                continue;
+            }
+            else{
+                mode = checkCm(Instructions[0]); //Check the commands and runs it
+            }
 
     
-    //         if (mode == 1){ // case where copy does not req.
-    //             continue;
-    //         }
-    //         else if (mode == 0){ //Normal case
-    //             strcpy(prevInstruct, instruct);
-    //         }
+            if (mode == 1){ // case where copy does not req.
+                continue;
+            }
+            else if (mode == 0){ //Normal case
+                strcpy(prevInstruct, instruct);
+            }
 
 
-    //         if (mode == 1){ // !! does not keep prev
-    //             continue;
-    //         }
-    //         else if (mode == 0){ //Normal case, does not work for outside process.
-    //             // printf("hi from mode==0\n");
-    //             strcpy(prevInstruct, instruct);
-    //         }
-    //         else if (mode == -1){
-    //             printf("Command does not exist u dumb >:(\n");
-    //         }
-    //     }    
-    //     fclose(fptr);
-    //     return (uint8_t)exit;  
-    // }
+            if (mode == 1){ // !! does not keep prev
+                continue;
+            }
+            else if (mode == 0){ //Normal case, does not work for outside process.
+                // printf("hi from mode==0\n");
+                strcpy(prevInstruct, instruct);
+            }
+            else if (mode == -1){
+                printf("Command does not exist u dumb >:(\n");
+            }
+        }    
+        fclose(fptr);
+        return (uint8_t)exit;  
+    }
 
 
     while (1) {  //Normal mode, user input thing                
