@@ -13,8 +13,8 @@
 
 #define MAX_CMD_BUFFER 255
 
-
-pid_t pid;
+pid_t suspended_pid = -1;
+pid_t child_pid;
 
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     char* prog_arv[255];
@@ -29,15 +29,19 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
         prog_arv[index] = command;
         index++;
     }
-
     
-    pid = fork();
+    signal(SIGTSTP, SIG_IGN);
 
-    if (pid == 0){
+    child_pid = fork();
+
+    if (child_pid == 0){
+
         //child process
-        signal(SIGINT, SIG_DFL);
+        signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
-        // tcsetpgrp(STDIN_FILENO, getpid()); //sets the child as foreground 
+
+        prog_arv[index] = NULL;
+        suspended_pid = getpid();
         int err = execvp(prog_arv[0],prog_arv); // will run the whole list 
         if (err == -1){
             return -1;
@@ -46,15 +50,12 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     }
 
     int status;
-    wait(&status);
-    tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
-
+    waitpid(child_pid, &status, WUNTRACED);
+    // tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
     int Stopped = 0;
     if (WIFSTOPPED(status)){
-        Stopped = pid;
+        Stopped = child_pid;
     }
-
-
 
     //3 cases 
     //1 is if program dne, 2 ping is found but error
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
     uint8_t exit = 0;
 
 
-    signal(SIGINT, SIG_IGN);
+    signal(SIGINT, SIG_IGN); //Ignore signal
     signal(SIGTSTP, SIG_IGN);
 
 
@@ -126,6 +127,11 @@ int main(int argc, char* argv[]) {
                 exit = atoi(strncpy(temp, instruct+4, 251));
                 printf("bye lol\n");
                 break;
+            }
+
+            if ( strncmp(Instructions[0], "fg", 2) == 0 ){
+                kill(suspended_pid, SIGCONT);
+                continue;
             }
 
             if ( strncmp(Instructions[0], "!!", 2) == 0 ){
@@ -161,7 +167,10 @@ int main(int argc, char* argv[]) {
     }
 
 
-    while (1) {  //Normal mode, user input thing                
+    while (1) {  //Normal mode, user input thing   
+        signal(SIGTTOU, SIG_IGN);
+        tcsetpgrp(STDIN_FILENO, getpid());
+        
         fflush(stdin);
         printf("icsh $ ");
 
@@ -179,6 +188,17 @@ int main(int argc, char* argv[]) {
             break;
         }
         
+        if ( strncmp(Instructions[0], "fg", 2) == 0 ){
+            
+            tcsetpgrp(STDIN_FILENO, child_pid);
+            kill(child_pid, SIGCONT);
+            
+
+            int status;
+            waitpid(child_pid, &status, WUNTRACED);
+            continue;
+        }
+
         if ( strncmp(Instructions[0], "!!", 2) == 0 ){
             mode = checkCm(Instructions[1]); //get like !!
             continue;
