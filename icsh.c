@@ -176,11 +176,17 @@ int main(int argc, char* argv[]) {
 
         fgets(buffer, 255, stdin);
         buffer[strcspn(buffer, "\n")] = 0;
+
+        if ( strcmp(buffer, "") == 0 ){
+            continue;
+        }
         
         strcpy(instruct, buffer);
         
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
+
+        
 
         if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
             exit = atoi(strncpy(temp, instruct+4, 251));
