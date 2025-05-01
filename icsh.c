@@ -9,27 +9,48 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdint.h>
-#include <signal.h>
+#include <signal.h> 
+#include <fcntl.h>
+
 
 #define MAX_CMD_BUFFER 255
 
 pid_t suspended_pid = -1;
 pid_t child_pid;
 
+void output(char* fileName){ //This function redirects the stdout to the file.
+    int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
+    dup2(file_desc, STDOUT_FILENO); // This makes stdout the file itself.
+    close(file_desc);
+}
+
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
+    int resetSTDOUT = dup(STDOUT_FILENO);
     char* prog_arv[255];
     char* command = strtok(instruct, " "); //First part of the instruct, command part.
 
     char str[100] = "/usr/bin/";
     prog_arv[0] = strcat(str, command);
 
+    char* fileName;
+    if (strchr(instruct, (int)'>') == 0){ // after this it must be a file.
+        fileName = strchr(instruct, (int)'>')+2;
+        int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
+        dup2(file_desc, STDOUT_FILENO); // This makes stdout the file itself.
+        close(file_desc);
+        // output(filename);//pass in a file here.
+    }
+
+
     int index = 1;
     while (command != NULL){
         command = strtok(NULL, " ");
+        if (strcmp(command, ">") == 0 | strcmp(command, "<") == 0){break;}
         prog_arv[index] = command;
         index++;
     }
     
+
     signal(SIGTSTP, SIG_IGN);
 
     child_pid = fork();
@@ -51,6 +72,7 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
 
     int status;
     waitpid(child_pid, &status, WUNTRACED);
+    dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
     // tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
     int Stopped = 0;
     if (WIFSTOPPED(status)){
@@ -83,7 +105,7 @@ void echo(char* instruct){ //Printing stuff
 
 int checkCm(char* commands){ // 0 is current com, 1 is prev
 
-    if ( strncmp( commands, "echo", 4 ) == 0 ){
+    if ( strncmp( commands, "echo ", 5 ) == 0 ){
         echo(commands);
         return 0;
     }
@@ -166,10 +188,12 @@ int main(int argc, char* argv[]) {
         return (uint8_t)exit;  
     }
 
+    signal(SIGTTOU, SIG_IGN);
+    tcsetpgrp(STDIN_FILENO, getpid());
+
 
     while (1) {  //Normal mode, user input thing   
-        signal(SIGTTOU, SIG_IGN);
-        tcsetpgrp(STDIN_FILENO, getpid());
+        
         
         fflush(stdin);
         printf("icsh $ ");
@@ -186,9 +210,8 @@ int main(int argc, char* argv[]) {
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
-        
 
-        if ( strncmp( Instructions[0], "exit", 4 ) == 0 ){
+        if ( strncmp( Instructions[0], "exit ", 5 ) == 0 ){
             exit = atoi(strncpy(temp, instruct+4, 251));
             printf("bye lol\n");
             break;

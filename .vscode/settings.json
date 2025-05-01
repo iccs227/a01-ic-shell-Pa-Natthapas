@@ -5,7 +5,8 @@
         "*.dbclient-js": "javascript",
         "stdlib.h": "c",
         "string.h": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "signal.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
