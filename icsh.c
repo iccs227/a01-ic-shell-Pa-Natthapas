@@ -18,7 +18,7 @@
 pid_t suspended_pid = -1;
 pid_t child_pid;
 
-void output(char* fileName){ //This function redirects the stdout to the file.
+void output(char fileName[]){ //This function redirects the stdout to the file.
     int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
     dup2(file_desc, STDOUT_FILENO); // This makes stdout the file itself.
     close(file_desc);
@@ -26,35 +26,46 @@ void output(char* fileName){ //This function redirects the stdout to the file.
 
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     int resetSTDOUT = dup(STDOUT_FILENO);
+
+    char* redir = strchr(instruct, '>'); // Getting the fileName
+    char file[255];
+    char* arr = file;
+    int indexOut; // no redirection
+    if (redir != NULL){ // is found.
+        indexOut = 0;
+        while (instruct[indexOut] != '>') {indexOut++;}
+        for (int i = indexOut; i<strlen(instruct); i++){
+            file[i-indexOut] = instruct[i];
+        }
+        printf("%s ", file);
+        strtok(file, " ");
+        arr = strtok(NULL, " ");
+        // printf("%s\n", arr);
+        // printf("%s\n", instruct);
+        instruct = strtok(instruct, ">");
+        // printf("%s", instruct);
+        output(arr);//redirect output to the file.
+    }
+    
     char* prog_arv[255];
     char* command = strtok(instruct, " "); //First part of the instruct, command part.
 
     char str[100] = "/usr/bin/";
     prog_arv[0] = strcat(str, command);
 
-    char* fileName;
-    if (strchr(instruct, (int)'>') == 0){ // after this it must be a file.
-        fileName = strchr(instruct, (int)'>')+2;
-        int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
-        dup2(file_desc, STDOUT_FILENO); // This makes stdout the file itself.
-        close(file_desc);
-        // output(filename);//pass in a file here.
-    }
 
 
-    int index = 1;
+    int index = 1; //Parsing command.
     while (command != NULL){
         command = strtok(NULL, " ");
-        if (strcmp(command, ">") == 0 | strcmp(command, "<") == 0){break;}
         prog_arv[index] = command;
         index++;
     }
-    
 
-    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN); // ignore crtlz
+
 
     child_pid = fork();
-
     if (child_pid == 0){
 
         //child process
@@ -109,7 +120,6 @@ int checkCm(char* commands){ // 0 is current com, 1 is prev
         echo(commands);
         return 0;
     }
-
     else{
         int isExist = outsideProcess(commands);
         if (isExist == 0){ //does exist
@@ -193,7 +203,8 @@ int main(int argc, char* argv[]) {
 
 
     while (1) {  //Normal mode, user input thing   
-        
+        signal(SIGTTOU, SIG_IGN);
+        tcsetpgrp(STDIN_FILENO, getpid());
         
         fflush(stdin);
         printf("icsh $ ");
