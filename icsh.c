@@ -2,7 +2,7 @@
  * Name:
  * StudentID:
  */
-// #include "LinkedList.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,8 +24,18 @@ void output(char fileName[]){ //This function redirects the stdout to the file.
     close(file_desc);
 }
 
+
+void input(char fileName[]){ //Redirect the file to make it stdin.
+    printf("%s\n", fileName);
+    int file_desc = open(fileName, O_RDONLY, 0777); //Points STDIN to the file.
+    dup2(file_desc, STDIN_FILENO);
+    close(file_desc);
+}
+
+
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     int resetSTDOUT = dup(STDOUT_FILENO);
+    int resetSTDIN = dup(STDIN_FILENO);
 
     char* redir = strchr(instruct, '>'); // Getting the fileName
     char file[255];
@@ -37,15 +47,27 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
         for (int i = indexOut; i<strlen(instruct); i++){
             file[i-indexOut] = instruct[i];
         }
-        printf("%s ", file);
+        // printf("%s ", file);
         strtok(file, " ");
         arr = strtok(NULL, " ");
-        // printf("%s\n", arr);
-        // printf("%s\n", instruct);
         instruct = strtok(instruct, ">");
-        // printf("%s", instruct);
         output(arr);//redirect output to the file.
     }
+
+    redir = strchr(instruct, '<'); // Getting the fileName
+    if (redir != NULL){
+        indexOut = 0;
+        while (instruct[indexOut] != '<') {indexOut++;}
+        for (int i = indexOut; i<strlen(instruct); i++){
+            file[i-indexOut] = instruct[i];
+        }
+        strtok(file, " ");
+        arr = strtok(NULL, " ");
+        instruct = strtok(instruct, "<");
+        input(arr);
+        printf("%s\n", arr);
+    }
+
     
     char* prog_arv[255];
     char* command = strtok(instruct, " "); //First part of the instruct, command part.
@@ -53,14 +75,16 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     char str[100] = "/usr/bin/";
     prog_arv[0] = strcat(str, command);
 
-
-
+ 
     int index = 1; //Parsing command.
     while (command != NULL){
         command = strtok(NULL, " ");
         prog_arv[index] = command;
         index++;
     }
+    // printf("%s\n ", arr);
+    // printf("%s\n", command);
+
 
     signal(SIGTSTP, SIG_IGN); // ignore crtlz
 
@@ -84,11 +108,13 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     int status;
     waitpid(child_pid, &status, WUNTRACED);
     dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
+    dup2(resetSTDIN, STDIN_FILENO);
+
     // tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
-    int Stopped = 0;
-    if (WIFSTOPPED(status)){
-        Stopped = child_pid;
-    }
+    // int Stopped = 0;
+    // if (WIFSTOPPED(status)){
+    //     Stopped = child_pid;
+    // }
 
     //3 cases 
     //1 is if program dne, 2 ping is found but error
