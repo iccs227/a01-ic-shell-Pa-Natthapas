@@ -12,11 +12,11 @@
 #include <signal.h> 
 #include <fcntl.h>
 
-
 #define MAX_CMD_BUFFER 255
 
 pid_t suspended_pid = -1;
 pid_t child_pid;
+pid_t mainBranch;
 
 void output(char fileName[]){ //This function redirects the stdout to the file.
     int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
@@ -36,6 +36,15 @@ void input(char fileName[]){ //Redirect the file to make it stdin.
 int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     int resetSTDOUT = dup(STDOUT_FILENO);
     int resetSTDIN = dup(STDIN_FILENO);
+
+    int isForeground = 0;
+    char* foregroundProcesses = strchr(instruct, '&');
+    if (foregroundProcesses != NULL){
+        instruct = strtok(instruct, "&");
+        isForeground = 1;
+    }
+
+
 
     char* redir = strchr(instruct, '>'); // Getting the fileName
     char file[255];
@@ -82,10 +91,6 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
         prog_arv[index] = command;
         index++;
     }
-    // printf("%s\n ", arr);
-    // printf("%s\n", command);
-
-
     signal(SIGTSTP, SIG_IGN); // ignore crtlz
 
 
@@ -99,6 +104,10 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
         prog_arv[index] = NULL;
         suspended_pid = getpid();
         int err = execvp(prog_arv[0],prog_arv); // will run the whole list 
+        if (isForeground == 1){ //Keeps the process running at face.
+            printf("The given cmd is now running.");
+            tcsetpgrp(STDIN_FILENO, mainBranch);
+        }
         if (err == -1){
             return -1;
         }
@@ -109,12 +118,6 @@ int outsideProcess(char* instruct){ //Pass in Commands that are already splitted
     waitpid(child_pid, &status, WUNTRACED);
     dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
     dup2(resetSTDIN, STDIN_FILENO);
-
-    // tcsetpgrp(STDIN_FILENO, getpid()); //set the main back to the forground
-    // int Stopped = 0;
-    // if (WIFSTOPPED(status)){
-    //     Stopped = child_pid;
-    // }
 
     //3 cases 
     //1 is if program dne, 2 ping is found but error
@@ -166,7 +169,7 @@ int main(int argc, char* argv[]) {
     int mode;
     uint8_t exit = 0;
 
-
+    mainBranch = getpid();
     signal(SIGINT, SIG_IGN); //Ignore signal
     signal(SIGTSTP, SIG_IGN);
 
@@ -201,19 +204,12 @@ int main(int argc, char* argv[]) {
             }
 
     
+
+            //Operations for dealing with cmd list.
             if (mode == 1){ // case where copy does not req.
                 continue;
             }
             else if (mode == 0){ //Normal case
-                strcpy(prevInstruct, instruct);
-            }
-
-
-            if (mode == 1){ // !! does not keep prev
-                continue;
-            }
-            else if (mode == 0){ //Normal case, does not work for outside process.
-                // printf("hi from mode==0\n");
                 strcpy(prevInstruct, instruct);
             }
             else if (mode == -1){
@@ -274,6 +270,8 @@ int main(int argc, char* argv[]) {
         }
 
 
+
+        //Operations for dealing with cmd list.
         if (mode == 1){ // case where cpy is not req.
             continue;
         }
