@@ -3,17 +3,20 @@
 #include <string.h>
 
 typedef struct Node{
-    char* items;
+    int items;
+    int Order;
+
     int Size;
     struct Node* next;
+    struct Node* prev;
 } Node;
 
-Node* LinkedList(){
+Node* ProcessTracker(){ // basically a LL
     Node* Sentinel = malloc(sizeof(Node));
     Sentinel->Size = 0;
-    Sentinel->items = "Sentinel";
+    Sentinel->items = -11111111;
     Sentinel->next = NULL;
-
+    Sentinel->prev = NULL;
     return Sentinel;
 }
 
@@ -35,47 +38,63 @@ int getSize(Node* Sentinel){
     return Sentinel->Size;
 }
 
-char* getItems(Node* Sentinel, int index){
-    Node* walk = Sentinel->next;
-    if (index > getSize(Sentinel)){
-        printf("Index out of range.\n");
-        return NULL;
-    }
-    for (int i = 0; i < index; i++){
-        walk = walk->next;
-    }
-    return walk->items;
-}
-
-void addFirst(Node* Sentinel, char* item){
+void addFirst(Node* Sentinel, int item){
     Node* first = malloc(sizeof(Node));
-    first->items = item;
+
+    first->prev = Sentinel;
+    first->next = Sentinel->next;
+    
 
     if (Sentinel->Size == 0){
-        first->next = NULL;
         Sentinel->next = first;
+        Sentinel->prev = first;
+        first->next = Sentinel;
     }
     else {
-        first->next = Sentinel->next;
+        Sentinel->next->prev = first;
         Sentinel->next = first;
+        first->prev = Sentinel;
     }
+
     Sentinel->Size++;
+    first->Order = Sentinel->Size;
 }
 
-void addLast(Node* Sentinel, char* item){
+void addLast(Node* Sentinel, int item){
     Node* last = malloc(sizeof(Node));
-    last->items = item;
-    last->next = NULL;
-
-    if (Sentinel->Size == 0){
+    last->next = Sentinel;
+    last->prev = Sentinel->prev;
+    if (Sentinel->Size = 0){
         Sentinel->next = last;
+        Sentinel->prev = last;
+        last->prev = Sentinel;
     }
-    else{
-        Node* walk = NULL;
-        for (walk = Sentinel; walk->next!=NULL; walk = walk->next);
-        walk->next = last;
+    else {
+        Sentinel->prev->next = last;
+        Sentinel->prev = last;
+        last->next = Sentinel;
     }
+
     Sentinel->Size++;
+    last->Order = Sentinel->Size;
+}
+
+void deleteNode(Node* Sentinel, int index){
+    Node* walk = Sentinel;
+    if (index <= (Sentinel->Size)/2){
+        for (int i = 0; i < index; i++){
+            walk = walk->next;
+        }
+    }
+    else if (index > (Sentinel->Size)/2){ 
+        for (int i = 0; i <= ((Sentinel->Size)-index); i++){
+            walk = walk->prev;
+        }
+    }
+    walk->prev->next = walk->next;
+    walk->next->prev = walk->prev;
+    Sentinel->Size--;
+    free(walk);
 }
 
 void printLL(Node* Sentinel){

@@ -7,3 +7,11 @@ Makefile
 README.md
 test.sh
  8  8 73 cat.txt
+cat.txt
+icsh
+icsh.c
+LinkedList.c
+LinkedList.h
+Makefile
+README.md
+test.sh
