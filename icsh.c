@@ -3,7 +3,7 @@
  * StudentID: 6581155
  */
 
-#include "ProcessTracker.h"
+// #include "ProcessTracker.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +19,53 @@ pid_t suspended_pid = -1;
 pid_t child_pid;
 pid_t mainBranch;
 
+int processMap[1000][3]; //Keeps a uh { {Order, PID, isBackground }, ... } pair.
+int size = 1;
+
+int GetMapID(pid_t processID){
+    int processOrder;
+    for (int i = 0; i < sizeof(processMap); i++){
+        if (processMap[i][1] == processID){
+            processOrder = processMap[i][0];
+        }
+    }
+    return processOrder;
+}
+
+void addPIDMap(pid_t processID){
+    processMap[size-1][0] = size;
+    processMap[size-1][1] = processID;
+    processMap[size-1][2] = 1; //is forground process.
+    size++;
+}
+
+int removePIDMap(pid_t processID){
+    for (int i = 0;i < 1000; i++){
+        if (processMap[i][1] == processID){
+            size--;
+            return processMap[i][0];
+        }
+        else if (processMap[i][0] == 0 && processMap[i][1] == 0){
+            break;
+        }
+    }
+    size--;
+    return -1; // Process not found, broken.
+}
+
+int getProcess(pid_t processID){
+    for (int i = 0;i < 1000; i++){
+        if (processMap[i][1] == processID){
+            size--;
+            return processMap[i][2];
+        }
+        else if (processMap[i][0] == 0 && processMap[i][1] == 0 && processMap[i][2] == 0){
+            break;
+        }
+    }
+    size--;
+    return -1; // Process not found, broken.
+}
 
 void output(char fileName[])
 { // This function redirects the stdout to the file.
@@ -104,10 +151,9 @@ int outsideProcess(char *instruct)
     signal(SIGTSTP, SIG_IGN); // ignore crtlz
 
     child_pid = fork(); // 0 in the child itself but sth else outside.
-    addLast(ProcessTracker, child_pid);
+    addPIDMap(child_pid);
     if (child_pid == 0)
     {
-
         // child process
         signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
@@ -131,13 +177,14 @@ int outsideProcess(char *instruct)
     {
         printf("%d is running.\n", child_pid);
     }
+
+    
     dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
     dup2(resetSTDIN, STDIN_FILENO);
 
     // 3 cases
     // 1 is if program dne, 2 ping is found but error
-    if (WIFEXITED(status))
-    { // if true then it means it exited normally
+    if (WIFEXITED(status)){ // if true then it means it exited normally
         int statusCode = WEXITSTATUS(status);
         if (statusCode == 0)
         {
@@ -152,8 +199,7 @@ int outsideProcess(char *instruct)
     // main process
 }
 
-void echo(char *instruct)
-{ // Printing stuff
+void echo(char *instruct){ // Printing stuff
     for (int i = 5; i < strlen(instruct); i++)
     {
         printf("%c", instruct[i]);
@@ -161,19 +207,14 @@ void echo(char *instruct)
     printf("\n");
 }
 
-int checkCm(char *commands)
-{ // 0 is current com, 1 is prev
-
-    if (strncmp(commands, "echo ", 5) == 0)
-    {
+int checkCm(char *commands){ // 0 is current com, 1 is prev
+    if (strncmp(commands, "echo ", 5) == 0){
         echo(commands);
         return 0;
     }
-    else
-    {
+    else{
         int isExist = outsideProcess(commands);
-        if (isExist == 0)
-        { // does exist
+        if (isExist == 0){ // does exist
             return 0;
         }
     }
@@ -184,7 +225,15 @@ void childHandler(int sig)
 {   
     int status;
     pid_t deadChild = waitpid(-1, &status, WNOHANG);
-    printf("\n%d has died.\n", deadChild);
+    int isBack = getProcess(deadChild);
+
+    if (isBack != 1){
+        return;
+    }
+
+    int pidOrder = removePIDMap(deadChild);
+    printf("\n[%d] %d has died.\n", pidOrder, deadChild);
+    fflush(stdout);
 }
 
 int main(int argc, char *argv[])
@@ -202,8 +251,6 @@ int main(int argc, char *argv[])
     signal(SIGINT, SIG_IGN); // Ignore signal
     signal(SIGTSTP, SIG_IGN);
     signal(SIGCHLD, childHandler);
-
-    Node* Processes = ProcessTracker();
 
     if (argc > 1)
     { // script mode
@@ -280,6 +327,7 @@ int main(int argc, char *argv[])
 
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
+
 
         if (strncmp(Instructions[0], "exit ", 5) == 0)
         {

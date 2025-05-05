@@ -34,6 +34,10 @@ void DeleteList(Node* Sentinel){
     free(Sentinel);
 }
 
+int getOrder(Node* Sentinel){
+    return Sentinel->Order;
+}
+
 int getSize(Node* Sentinel){
     return Sentinel->Size;
 }
@@ -41,6 +45,7 @@ int getSize(Node* Sentinel){
 void addFirst(Node* Sentinel, int item){
     Node* first = malloc(sizeof(Node));
 
+    first->items = item;
     first->prev = Sentinel;
     first->next = Sentinel->next;
     
@@ -62,8 +67,11 @@ void addFirst(Node* Sentinel, int item){
 
 void addLast(Node* Sentinel, int item){
     Node* last = malloc(sizeof(Node));
+
+    last->items = item;
     last->next = Sentinel;
     last->prev = Sentinel->prev;
+
     if (Sentinel->Size = 0){
         Sentinel->next = last;
         Sentinel->prev = last;
