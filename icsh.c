@@ -15,16 +15,17 @@
 
 #define MAX_CMD_BUFFER 255
 
-pid_t suspended_pid = -1;
+// pid_t suspended_pid = -1;
 pid_t child_pid;
 pid_t mainBranch;
+pid_t fg_pgid;
 
 int processMap[1000][3]; //Keeps a uh { {Order, PID, isBackground }, ... } pair.
 int size = 1;
 
-int GetMapID(pid_t processID){
+int GetMapID(pid_t processID){ // this works.
     int processOrder;
-    for (int i = 0; i < sizeof(processMap); i++){
+    for (int i = 0; i < size; i++){
         if (processMap[i][1] == processID){
             processOrder = processMap[i][0];
         }
@@ -32,27 +33,25 @@ int GetMapID(pid_t processID){
     return processOrder;
 }
 
-void addPIDMap(pid_t processID){
+void addPIDMap(pid_t processID, int isForeground){ // adding stuff
     processMap[size-1][0] = size;
     processMap[size-1][1] = processID;
-    processMap[size-1][2] = 1; //is forground process.
+    processMap[size-1][2] = isForeground; //is forground process.
     size++;
 }
 
 int removePIDMap(pid_t processID){ // return the number process.
+    int retVal;
     for (int i = 0;i < size; i++){
         if (processMap[i][1] == processID){
-            size--;
-            return processMap[i][0];
-        }
-    }
-    return -1; // Process not found, broken.
-}
-
-int getProcess(pid_t processID){
-    for (int i = 0;i < 1000; i++){
-        if (processMap[i][1] == processID){
-            return processMap[i][2];
+            retVal = processMap[i][0];
+            for (int j = i; j < size-1; j++){
+                processMap[j][0] = processMap[j+1][0];
+                processMap[j][1] = processMap[j+1][1];
+                processMap[j][2] = processMap[j+1][2];
+             }
+             size--;
+             return retVal;
         }
     }
     return -1; // Process not found, broken.
@@ -65,7 +64,6 @@ void printProcess(){
 }
 
 void bringUp(char* instruct){
-
     signal(SIGTTOU, SIG_IGN);
     strtok(instruct, " ");
     char* processNum = strtok(NULL, " ");
@@ -89,15 +87,23 @@ void input(char fileName[])
     close(file_desc);
 }
 
-int outsideProcess(char *instruct)
-{ // Pass in Commands that are already splitted
-    int resetSTDOUT = dup(STDOUT_FILENO);
+
+void ChildKill(int sig){
+    kill(child_pid, SIGINT);
+    removePIDMap(child_pid);
+}
+
+
+
+int outsideProcess(char *instruct){ // Pass in Commands that are already splitted
+    int resetSTDOUT = dup(STDOUT_FILENO); // to reset the io
     int resetSTDIN = dup(STDIN_FILENO);
 
-    int isForeground = 0;
+    
+    //*file redirection part */
+    int isForeground = 0; // Seperating string process.
     char *foregroundProcesses = strchr(instruct, '&');
-    if (foregroundProcesses != NULL)
-    {
+    if (foregroundProcesses != NULL){
         instruct = strtok(instruct, "&");
         isForeground = 1;
     }
@@ -154,44 +160,49 @@ int outsideProcess(char *instruct)
         prog_arv[index] = command;
         index++;
     }
+    //*done with file parsing part */
+
+
+    signal(SIGINT, SIG_IGN); // ignore ctrlc    
     signal(SIGTSTP, SIG_IGN); // ignore crtlz
 
-    child_pid = fork(); // 0 in the child itself but sth else outside.
-    
-    if (foregroundProcesses != NULL){
-        addPIDMap(child_pid);
-    }
-    if (child_pid == 0)
-    {
 
-        signal(SIGTTOU, SIG_IGN);
+    child_pid = fork(); // 0 in the child itself but sth else outside.
+    addPIDMap(child_pid, isForeground); // 1 is sent to fg immediately, 0 stays outside
+    
+    if (child_pid == 0){
+
         // child process
-        signal(SIGINT, SIG_DFL); // specify default signal action.
+        signal(SIGTTOU, SIG_IGN);
+        signal(SIGINT, SIG_IGN); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
 
-        prog_arv[index] = NULL;
-        suspended_pid = getpid();
+        setpgid(0, 0); // set group id to its own uniqe group setpgid(getpid(), getpid())
+        
+        prog_arv[index] = NULL; // command thing.
         int err = execvp(prog_arv[0], prog_arv); // will run the whole list
-        if (err == -1)
-        {
+        if (err == -1){
             return -1;
         }
         // this replace the memory iff it is successful
     }
 
+    setpgid(child_pid, child_pid);
     int status;
     if (isForeground != 1)
     {
         waitpid(child_pid, &status, WUNTRACED);
+        fflush(stdin);
+        removePIDMap(child_pid);
+        tcsetpgrp(STDIN_FILENO, getpid());
     }
-    else if (isForeground == 1)
-    {
+    else if (isForeground == 1){
         printf("%d is running.\n", child_pid);
     }
-
     
     dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
     dup2(resetSTDIN, STDIN_FILENO);
+    // removePIDMap(child_pid);
 
     // 3 cases
     // 1 is if program dne, 2 ping is found but error
@@ -232,27 +243,37 @@ int checkCm(char *commands){ // 0 is current com, 1 is prev
     return -1; // command does not exist
 }
 
-int flag = 0;
-
 void childHandler(int sig){   // Still fucks up my format part. 
     int status;
     pid_t deadChild;
     
     char msg[MAX_CMD_BUFFER];
-    while ((deadChild = waitpid(-1, &status, WNOHANG)) > 0){
-        int isBack = getProcess(deadChild);
+    while ((deadChild = waitpid(-1, &status, WNOHANG)) > 0){ // 
+        int isBack = GetMapID(deadChild);
+        int pidOrder = removePIDMap(deadChild);
 
         if (isBack != 1){
             continue;
         }
-        int pidOrder = removePIDMap(deadChild);
         int len = snprintf(msg, sizeof(msg), "\nChild [%d] %d exited.\n",pidOrder, deadChild);
         write(STDOUT_FILENO, msg, len);
     }
 }
 
-int main(int argc, char *argv[])
-{
+void handleTSTP(int sig){
+    kill(-child_pid, sig);
+    tcsetpgrp(STDIN_FILENO, getpid());
+}
+
+int findPidByJob(int jobID){
+    // int ret;
+    // for (int i = 0;i<(jobID-1), i++){
+    //     if ()
+    // }
+    return processMap[jobID][1];
+}
+
+int main(int argc, char *argv[]){
     char buffer[MAX_CMD_BUFFER];
     char instruct[MAX_CMD_BUFFER];
     char prevInstruct[MAX_CMD_BUFFER];
@@ -264,9 +285,11 @@ int main(int argc, char *argv[])
 
     mainBranch = getpid();
     signal(SIGINT, SIG_IGN); // Ignore signal
-    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTSTP, handleTSTP);
     signal(SIGCHLD, childHandler);
     
+    fg_pgid = getpid();
+
     if (argc > 1)
     { // script mode
         FILE *fptr = fopen(argv[1], "r");
@@ -286,11 +309,11 @@ int main(int argc, char *argv[])
                 break;
             }
 
-            if (strncmp(Instructions[0], "fg", 2) == 0)
-            {
-                kill(suspended_pid, SIGCONT);
-                continue;
-            }
+            // if (strncmp(Instructions[0], "fg", 2) == 0)
+            // {
+            //     kill(suspended_pid, SIGCONT);
+            //     continue;
+            // }
 
             if (strncmp(Instructions[0], "!!", 2) == 0)
             {
@@ -322,11 +345,10 @@ int main(int argc, char *argv[])
     }
 
     signal(SIGTTOU, SIG_IGN);
-    tcsetpgrp(STDIN_FILENO, getpid());
+    tcsetpgrp(STDIN_FILENO, getpid()); //give term access to the main.
 
     while (1){ // Normal mode, user input thing
-        
-        fflush(stdin);
+        // fflush(stdin);
         printf("icsh $ ");
 
         fgets(buffer, 255, stdin); 
@@ -353,20 +375,23 @@ int main(int argc, char *argv[])
         }
 
         if (strncmp(Instructions[0], "fg", 2) == 0)
+
         {
-            // bringUp(Instructions[0]);
+            signal(SIGTTOU, SIG_IGN);
+
             strtok(instruct, " ");
             char* processNum = strtok(NULL, " ");
             int pNum = atoi(processNum);
-            printf("%d", processMap[pNum-1][1]);
-            tcsetpgrp(STDIN_FILENO, processMap[pNum-1][1]);
-
-            // tcsetpgrp(STDIN_FILENO, child_pid);
-            // kill(child_pid, SIGCONT);
+            pid_t pid = processMap[pNum - 1][1];
+            printf("%d\n", pid);
+            tcsetpgrp(STDIN_FILENO, pid); // bring the process up
+            kill(pid, SIGCONT); // continue
+            
 
             int status;
-            waitpid(processMap[pNum-1][1], &status, WUNTRACED);
+            waitpid(pid, &status, WUNTRACED);
             tcsetpgrp(STDIN_FILENO, getpid());
+            removePIDMap(pid); // remove it.
             continue;
         }
 
