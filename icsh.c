@@ -39,32 +39,39 @@ void addPIDMap(pid_t processID){
     size++;
 }
 
-int removePIDMap(pid_t processID){
-    for (int i = 0;i < 1000; i++){
+int removePIDMap(pid_t processID){ // return the number process.
+    for (int i = 0;i < size; i++){
         if (processMap[i][1] == processID){
             size--;
             return processMap[i][0];
         }
-        else if (processMap[i][0] == 0 && processMap[i][1] == 0){
-            break;
-        }
     }
-    size--;
     return -1; // Process not found, broken.
 }
 
 int getProcess(pid_t processID){
     for (int i = 0;i < 1000; i++){
         if (processMap[i][1] == processID){
-            size--;
             return processMap[i][2];
         }
-        else if (processMap[i][0] == 0 && processMap[i][1] == 0 && processMap[i][2] == 0){
-            break;
-        }
     }
-    size--;
     return -1; // Process not found, broken.
+}
+
+void printProcess(){
+    for (int i = 0; i<size-1; i++){
+        printf("[%d] Running\n", processMap[i][0]);
+    }
+}
+
+void bringUp(char* instruct){
+
+    signal(SIGTTOU, SIG_IGN);
+    strtok(instruct, " ");
+    char* processNum = strtok(NULL, " ");
+    int pNum = atoi(processNum);
+    printf("%d", processMap[pNum-1][1]);
+    tcsetpgrp(STDIN_FILENO, processMap[pNum-1][1]);
 }
 
 void output(char fileName[])
@@ -102,8 +109,7 @@ int outsideProcess(char *instruct)
     if (redir != NULL)
     { // is found.
         indexOut = 0;
-        while (instruct[indexOut] != '>')
-        {
+        while (instruct[indexOut] != '>'){
             indexOut++;
         }
         for (int i = indexOut; i < strlen(instruct); i++)
@@ -151,9 +157,14 @@ int outsideProcess(char *instruct)
     signal(SIGTSTP, SIG_IGN); // ignore crtlz
 
     child_pid = fork(); // 0 in the child itself but sth else outside.
-    addPIDMap(child_pid);
+    
+    if (foregroundProcesses != NULL){
+        addPIDMap(child_pid);
+    }
     if (child_pid == 0)
     {
+
+        signal(SIGTTOU, SIG_IGN);
         // child process
         signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
@@ -221,19 +232,23 @@ int checkCm(char *commands){ // 0 is current com, 1 is prev
     return -1; // command does not exist
 }
 
-void childHandler(int sig)
-{   
+int flag = 0;
+
+void childHandler(int sig){   // Still fucks up my format part. 
     int status;
-    pid_t deadChild = waitpid(-1, &status, WNOHANG);
-    int isBack = getProcess(deadChild);
+    pid_t deadChild;
+    
+    char msg[MAX_CMD_BUFFER];
+    while ((deadChild = waitpid(-1, &status, WNOHANG)) > 0){
+        int isBack = getProcess(deadChild);
 
-    if (isBack != 1){
-        return;
+        if (isBack != 1){
+            continue;
+        }
+        int pidOrder = removePIDMap(deadChild);
+        int len = snprintf(msg, sizeof(msg), "\nChild [%d] %d exited.\n",pidOrder, deadChild);
+        write(STDOUT_FILENO, msg, len);
     }
-
-    int pidOrder = removePIDMap(deadChild);
-    printf("\n[%d] %d has died.\n", pidOrder, deadChild);
-    fflush(stdout);
 }
 
 int main(int argc, char *argv[])
@@ -244,14 +259,14 @@ int main(int argc, char *argv[])
     char temp[MAX_CMD_BUFFER];
 
     char *Instructions[2] = {NULL, NULL};
-    int mode;
+    int mode = 0;
     uint8_t exit = 0;
 
     mainBranch = getpid();
     signal(SIGINT, SIG_IGN); // Ignore signal
     signal(SIGTSTP, SIG_IGN);
     signal(SIGCHLD, childHandler);
-
+    
     if (argc > 1)
     { // script mode
         FILE *fptr = fopen(argv[1], "r");
@@ -309,17 +324,15 @@ int main(int argc, char *argv[])
     signal(SIGTTOU, SIG_IGN);
     tcsetpgrp(STDIN_FILENO, getpid());
 
-    while (1)
-    { // Normal mode, user input thing
-
+    while (1){ // Normal mode, user input thing
+        
         fflush(stdin);
         printf("icsh $ ");
 
-        fgets(buffer, 255, stdin);
+        fgets(buffer, 255, stdin); 
         buffer[strcspn(buffer, "\n")] = 0;
 
-        if (strcmp(buffer, "") == 0)
-        {
+        if (strcmp(buffer, "") == 0){
             continue;
         }
 
@@ -328,7 +341,6 @@ int main(int argc, char *argv[])
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
-
         if (strncmp(Instructions[0], "exit ", 5) == 0)
         {
             exit = atoi(strncpy(temp, instruct + 4, 251));
@@ -336,14 +348,25 @@ int main(int argc, char *argv[])
             break;
         }
 
+        if (strncmp(Instructions[0], "jobs", 4) == 0){
+            printProcess();
+        }
+
         if (strncmp(Instructions[0], "fg", 2) == 0)
         {
+            // bringUp(Instructions[0]);
+            strtok(instruct, " ");
+            char* processNum = strtok(NULL, " ");
+            int pNum = atoi(processNum);
+            printf("%d", processMap[pNum-1][1]);
+            tcsetpgrp(STDIN_FILENO, processMap[pNum-1][1]);
 
-            tcsetpgrp(STDIN_FILENO, child_pid);
-            kill(child_pid, SIGCONT);
+            // tcsetpgrp(STDIN_FILENO, child_pid);
+            // kill(child_pid, SIGCONT);
 
             int status;
-            waitpid(child_pid, &status, WUNTRACED);
+            waitpid(processMap[pNum-1][1], &status, WUNTRACED);
+            tcsetpgrp(STDIN_FILENO, getpid());
             continue;
         }
 
