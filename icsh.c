@@ -94,7 +94,6 @@ void ChildKill(int sig){
 }
 
 
-
 int outsideProcess(char *instruct){ // Pass in Commands that are already splitted
     int resetSTDOUT = dup(STDOUT_FILENO); // to reset the io
     int resetSTDIN = dup(STDIN_FILENO);
@@ -105,7 +104,7 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
     char *foregroundProcesses = strchr(instruct, '&');
     if (foregroundProcesses != NULL){
         instruct = strtok(instruct, "&");
-        isForeground = 1;
+        isForeground = 1; // is not foreground process.
     }
 
     char *redir = strchr(instruct, '>'); // Getting the fileName
@@ -174,7 +173,7 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
 
         // child process
         signal(SIGTTOU, SIG_IGN);
-        signal(SIGINT, SIG_IGN); // specify default signal action.
+        signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
 
         setpgid(0, 0); // set group id to its own uniqe group setpgid(getpid(), getpid())
@@ -187,12 +186,12 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
         // this replace the memory iff it is successful
     }
 
+
     setpgid(child_pid, child_pid);
     int status;
-    if (isForeground != 1)
-    {
+    if (isForeground == 0){
+        tcsetpgrp(STDIN_FILENO, child_pid);
         waitpid(child_pid, &status, WUNTRACED);
-        fflush(stdin);
         removePIDMap(child_pid);
         tcsetpgrp(STDIN_FILENO, getpid());
     }
@@ -261,7 +260,7 @@ void childHandler(int sig){   // Still fucks up my format part.
 }
 
 void handleTSTP(int sig){
-    kill(-child_pid, sig);
+    kill(-child_pid, SIGSTOP);
     tcsetpgrp(STDIN_FILENO, getpid());
 }
 
@@ -349,8 +348,7 @@ int main(int argc, char *argv[]){
 
     while (1){ // Normal mode, user input thing
         // fflush(stdin);
-        printf("icsh $ ");
-
+        printf("icsh $ "); 
         fgets(buffer, 255, stdin); 
         buffer[strcspn(buffer, "\n")] = 0;
 
@@ -372,20 +370,26 @@ int main(int argc, char *argv[]){
 
         if (strncmp(Instructions[0], "jobs", 4) == 0){
             printProcess();
+            continue;
         }
 
+        // if (strncmp(Instructions[0], 'bg', 2) == 0){
+        //     strtok(instruct, " ");
+        //     char* processNum = strtok(NULL, " ");
+        //     int pNum = atoi(processNum);
+        //     pid_t pid = processMap[pNum-1][1];
+        // }
+
         if (strncmp(Instructions[0], "fg", 2) == 0)
-
         {
-            signal(SIGTTOU, SIG_IGN);
-
             strtok(instruct, " ");
             char* processNum = strtok(NULL, " ");
             int pNum = atoi(processNum);
             pid_t pid = processMap[pNum - 1][1];
+
             printf("%d\n", pid);
             tcsetpgrp(STDIN_FILENO, pid); // bring the process up
-            kill(pid, SIGCONT); // continue
+            kill(-pid, SIGCONT); // continue
             
 
             int status;
