@@ -20,6 +20,8 @@ pid_t child_pid;
 pid_t mainBranch;
 pid_t fg_pgid;
 
+//Start of some random DS #######################################################
+
 int processMap[1000][3]; //Keeps a uh { {Order, PID, isBackground }, ... } pair.
 int size = 1;
 
@@ -72,27 +74,24 @@ void bringUp(char* instruct){
     tcsetpgrp(STDIN_FILENO, processMap[pNum-1][1]);
 }
 
-void output(char fileName[])
-{ // This function redirects the stdout to the file.
+void output(char fileName[]){ // This function redirects the stdout to the file.
     int file_desc = open(fileName, O_WRONLY | O_APPEND | O_CREAT, 0777);
     dup2(file_desc, STDOUT_FILENO); // This makes stdout the file itself.
     close(file_desc);
 }
 
-void input(char fileName[])
-{ // Redirect the file to make it stdin.
+void input(char fileName[]){ // Redirect the file to make it stdin.
     printf("%s\n", fileName);
     int file_desc = open(fileName, O_RDONLY, 0777); // Points STDIN to the file.
     dup2(file_desc, STDIN_FILENO);
     close(file_desc);
 }
 
+//END of DS ###########################################
 
-void ChildKill(int sig){
-    kill(child_pid, SIGINT);
-    removePIDMap(child_pid);
-}
 
+
+// Processes ########## This part is so shit #######################
 
 int outsideProcess(char *instruct){ // Pass in Commands that are already splitted
     int resetSTDOUT = dup(STDOUT_FILENO); // to reset the io
@@ -111,14 +110,12 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
     char file[255];
     char *arr = file;
     int indexOut; // no redirection
-    if (redir != NULL)
-    { // is found.
+    if (redir != NULL){ // is found.
         indexOut = 0;
         while (instruct[indexOut] != '>'){
             indexOut++;
         }
-        for (int i = indexOut; i < strlen(instruct); i++)
-        {
+        for (int i = indexOut; i < strlen(instruct); i++){
             file[i - indexOut] = instruct[i];
         }
         strtok(file, " ");
@@ -128,15 +125,12 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
     }
 
     redir = strchr(instruct, '<'); // Getting the fileName
-    if (redir != NULL)
-    {
+    if (redir != NULL){
         indexOut = 0;
-        while (instruct[indexOut] != '<')
-        {
+        while (instruct[indexOut] != '<'){
             indexOut++;
         }
-        for (int i = indexOut; i < strlen(instruct); i++)
-        {
+        for (int i = indexOut; i < strlen(instruct); i++){
             file[i - indexOut] = instruct[i];
         }
         strtok(file, " ");
@@ -168,8 +162,9 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
 
     child_pid = fork(); // 0 in the child itself but sth else outside.
     addPIDMap(child_pid, isForeground); // 1 is sent to fg immediately, 0 stays outside
-    
+    // fflush(stdout);
     if (child_pid == 0){
+        // fflush(stdout);
 
         // child process
         signal(SIGTTOU, SIG_IGN);
@@ -180,39 +175,44 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
         
         prog_arv[index] = NULL; // command thing.
         int err = execvp(prog_arv[0], prog_arv); // will run the whole list
+        fflush(stdout);
         if (err == -1){
             return -1;
         }
         // this replace the memory iff it is successful
     }
 
-
+    // fflush(stdout);
     setpgid(child_pid, child_pid);
     int status;
     if (isForeground == 0){
         tcsetpgrp(STDIN_FILENO, child_pid);
         waitpid(child_pid, &status, WUNTRACED);
+        // fflush(stdout);
         removePIDMap(child_pid);
         tcsetpgrp(STDIN_FILENO, getpid());
     }
     else if (isForeground == 1){
         printf("%d is running.\n", child_pid);
     }
-    
+
+
+    // fflush(stdout);
     dup2(resetSTDOUT, STDOUT_FILENO); // sets stdout back to terminal.
     dup2(resetSTDIN, STDIN_FILENO);
+    
+    // fflush(stdout);
+
     // removePIDMap(child_pid);
 
     // 3 cases
     // 1 is if program dne, 2 ping is found but error
     if (WIFEXITED(status)){ // if true then it means it exited normally
         int statusCode = WEXITSTATUS(status);
-        if (statusCode == 0)
-        {
+        if (statusCode == 0){
             return 0;
         }
-        else
-        {
+        else{
             return -1;
         }
     }
@@ -220,9 +220,12 @@ int outsideProcess(char *instruct){ // Pass in Commands that are already splitte
     // main process
 }
 
+// End of Shitty Processes ########################################################
+
+
+
 void echo(char *instruct){ // Printing stuff
-    for (int i = 5; i < strlen(instruct); i++)
-    {
+    for (int i = 5; i < strlen(instruct); i++){
         printf("%c", instruct[i]);
     }
     printf("\n");
@@ -242,35 +245,46 @@ int checkCm(char *commands){ // 0 is current com, 1 is prev
     return -1; // command does not exist
 }
 
+
+
+
+//################################################
+//Handler ******
+
 void childHandler(int sig){   // Still fucks up my format part. 
+
+    fflush(stdout);
+
     int status;
     pid_t deadChild;
     
     char msg[MAX_CMD_BUFFER];
-    while ((deadChild = waitpid(-1, &status, WNOHANG)) > 0){ // 
-        int isBack = GetMapID(deadChild);
+    
+    while ((deadChild = waitpid(-1, &status, WNOHANG)) > 0){ //
+        fflush(stdout);
         int pidOrder = removePIDMap(deadChild);
-
-        if (isBack != 1){
-            continue;
-        }
-        int len = snprintf(msg, sizeof(msg), "\nChild [%d] %d exited.\n",pidOrder, deadChild);
+        int len = snprintf(msg, sizeof(msg), "\nChild [%d] %d exited.\nicsh $ ",pidOrder, deadChild);
+        fflush(stdout);
+        fflush(stdin);
         write(STDOUT_FILENO, msg, len);
+        fflush(stdout);
     }
+    fflush(stdout);
+    
 }
 
 void handleTSTP(int sig){
+    fflush(stdout);
     kill(-child_pid, SIGSTOP);
+    fflush(stdout);
     tcsetpgrp(STDIN_FILENO, getpid());
+    fflush(stdout);
 }
 
-int findPidByJob(int jobID){
-    // int ret;
-    // for (int i = 0;i<(jobID-1), i++){
-    //     if ()
-    // }
-    return processMap[jobID][1];
-}
+
+// END of Handler
+//####################################################
+
 
 int main(int argc, char *argv[]){
     char buffer[MAX_CMD_BUFFER];
@@ -289,11 +303,9 @@ int main(int argc, char *argv[]){
     
     fg_pgid = getpid();
 
-    if (argc > 1)
-    { // script mode
+    if (argc > 1){ // script mode
         FILE *fptr = fopen(argv[1], "r");
-        while (fgets(buffer, sizeof(buffer), fptr))
-        {
+        while (fgets(buffer, sizeof(buffer), fptr)){
             buffer[strcspn(buffer, "\n")] = 0;
 
             strcpy(instruct, buffer);
@@ -301,40 +313,28 @@ int main(int argc, char *argv[]){
             Instructions[0] = instruct;
             Instructions[1] = prevInstruct;
 
-            if (strncmp(Instructions[0], "exit", 4) == 0)
-            {   
+            if (strncmp(Instructions[0], "exit", 4) == 0){   
                 exit = atoi(strncpy(temp, instruct + 4, 251));
                 printf("bye lol\n");
                 break;
             }
 
-            // if (strncmp(Instructions[0], "fg", 2) == 0)
-            // {
-            //     kill(suspended_pid, SIGCONT);
-            //     continue;
-            // }
-
-            if (strncmp(Instructions[0], "!!", 2) == 0)
-            {
+            if (strncmp(Instructions[0], "!!", 2) == 0){
                 mode = checkCm(Instructions[1]); // get like !!
                 continue;
             }
-            else
-            {
+            else{
                 mode = checkCm(Instructions[0]); // Check the commands and runs it
             }
 
             // Operations for dealing with cmd list.
-            if (mode == 1)
-            { // case where copy does not req.
+            if (mode == 1){ // case where copy does not req.
                 continue;
             }
-            else if (mode == 0)
-            { // Normal case
+            else if (mode == 0){ // Normal case
                 strcpy(prevInstruct, instruct);
             }
-            else if (mode == -1)
-            {
+            else if (mode == -1){
                 printf("Command does not exist u dumb >:(\n");
                 continue;
             }
@@ -347,11 +347,14 @@ int main(int argc, char *argv[]){
     tcsetpgrp(STDIN_FILENO, getpid()); //give term access to the main.
 
     while (1){ // Normal mode, user input thing
-        // fflush(stdin);
+        
+        
+        fflush(stdout);
         printf("icsh $ "); 
         fgets(buffer, 255, stdin); 
         buffer[strcspn(buffer, "\n")] = 0;
 
+        fflush(stdout);
         if (strcmp(buffer, "") == 0){
             continue;
         }
@@ -361,14 +364,13 @@ int main(int argc, char *argv[]){
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
-        if (strncmp(Instructions[0], "exit ", 5) == 0)
-        {
+        if (strncmp(Instructions[0], "exit ", 5) == 0){
             exit = atoi(strncpy(temp, instruct + 4, 251));
             printf("bye lol\n");
             break;
         }
 
-        if (strncmp(Instructions[0], "jobs", 4) == 0){
+        else if (strncmp(Instructions[0], "jobs", 4) == 0){
             printProcess();
             continue;
         }
@@ -380,8 +382,7 @@ int main(int argc, char *argv[]){
         //     pid_t pid = processMap[pNum-1][1];
         // }
 
-        if (strncmp(Instructions[0], "fg", 2) == 0)
-        {
+        else if (strncmp(Instructions[0], "fg", 2) == 0){
             strtok(instruct, " ");
             char* processNum = strtok(NULL, " ");
             int pNum = atoi(processNum);
@@ -391,23 +392,23 @@ int main(int argc, char *argv[]){
             tcsetpgrp(STDIN_FILENO, pid); // bring the process up
             kill(-pid, SIGCONT); // continue
             
-
             int status;
             waitpid(pid, &status, WUNTRACED);
             tcsetpgrp(STDIN_FILENO, getpid());
             removePIDMap(pid); // remove it.
+            fflush(stdin);
             continue;
         }
 
-        if (strncmp(Instructions[0], "!!", 2) == 0)
-        {
+        else if (strncmp(Instructions[0], "!!", 2) == 0){
             mode = checkCm(Instructions[1]); // get like !!
             continue;
         }
-        else
-        {
+        else{
             mode = checkCm(Instructions[0]); // Check the commands and runs it
         }
+
+
 
         // Operations for dealing with cmd list.
         if (mode == 1)
