@@ -1,12 +1,15 @@
 {
     "files.associations": {
+        "*.dbclient-js": "javascript",
         "*.sqlbook": "sql",
         "*.ndjson": "jsonl",
-        "*.dbclient-js": "javascript",
         "stdlib.h": "c",
         "string.h": "c",
         "cstdlib": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "process_map.h": "c",
+        "i_o_redirect.h": "c",
+        "wait.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

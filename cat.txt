@@ -1,17 +1,18 @@
-cat.txt
-icsh
-icsh.c
-LinkedList.c
-LinkedList.h
-Makefile
-README.md
-test.sh
- 8  8 73 cat.txt
-cat.txt
-icsh
-icsh.c
-LinkedList.c
-LinkedList.h
-Makefile
-README.md
-test.sh
+total 176
+-rwxr-xr-x@ 1 natthapasngamsukhonratana  staff      0 May  6 23:31 cat.txt
+-rw-r--r--  1 natthapasngamsukhonratana  staff   1171 May  6 23:31 i_o_redirect.c
+-rw-r--r--  1 natthapasngamsukhonratana  staff    184 May  6 23:21 i_o_redirect.h
+-rwxr-xr-x@ 1 natthapasngamsukhonratana  staff  36040 May  6 23:31 icsh
+-rw-r--r--  1 natthapasngamsukhonratana  staff   6562 May  6 23:25 icsh.c
+drwxr-xr-x@ 3 natthapasngamsukhonratana  staff     96 May  2 14:41 icsh.dSYM
+-rw-r--r--@ 1 natthapasngamsukhonratana  staff    133 May  2 14:41 Makefile
+-rw-r--r--  1 natthapasngamsukhonratana  staff   2158 May  6 22:49 process_map.c
+-rw-r--r--  1 natthapasngamsukhonratana  staff    481 May  6 23:20 process_map.h
+-rw-r--r--  1 natthapasngamsukhonratana  staff   2656 May  6 23:21 processes.c
+-rw-r--r--  1 natthapasngamsukhonratana  staff    167 May  6 23:20 processes.h
+-rw-r--r--  1 natthapasngamsukhonratana  staff   3184 May  6 19:14 ProcessTracker.c
+-rw-r--r--  1 natthapasngamsukhonratana  staff    382 May  6 19:14 ProcessTracker.h
+-rw-r--r--@ 1 natthapasngamsukhonratana  staff    271 May  2 14:41 README.md
+-rw-r--r--@ 1 natthapasngamsukhonratana  staff     31 May  2 14:41 test.sh
+
+Child [1] 45004 exited.
