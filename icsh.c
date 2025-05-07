@@ -185,18 +185,18 @@ int main(int argc, char *argv[]){
         Instructions[0] = instruct;
         Instructions[1] = prevInstruct;
 
-        if (strncmp(Instructions[0], "exit ", 5) == 0){
+        if (strncmp(Instructions[0], "exit", 4) == 0){
             exit = atoi(strncpy(temp, instruct + 4, 251));
             printf("bye lol\n");
-            break;
+            return (uint8_t)exit;
         }
 
-        else if (strncmp(Instructions[0], "jobs", 4) == 0){
+        else if (strncmp(Instructions[0], "jobs", 4) == 0){ // keep it prev.
             print_process(processes);
-            continue;
+            mode = 0;
         }
 
-        else if (strncmp(Instructions[0], "bg", 2) == 0){
+        else if (strncmp(Instructions[0], "bg", 2) == 0){ //keep prev?
             strtok(instruct, " ");
             char* processNum = strtok(NULL, " "); // get the number
             int pNum = atoi(processNum); // order
@@ -209,11 +209,11 @@ int main(int argc, char *argv[]){
             waitpid(pid, &status, WUNTRACED);
             remove_pid_map(processes, pid); // remove it.
             fflush(stdout);
-            continue;
+            mode = 0;
 
         }
 
-        else if (strncmp(Instructions[0], "fg", 2) == 0){
+        else if (strncmp(Instructions[0], "fg", 2) == 0){ // keep it
             strtok(instruct, " ");
             char* processNum = strtok(NULL, " "); // get the number
             int pNum = atoi(processNum); // order
@@ -227,19 +227,20 @@ int main(int argc, char *argv[]){
             tcsetpgrp(STDIN_FILENO, getpid());
             remove_pid_map(processes, pid); // remove it.
             fflush(stdout);
-            continue;
+            mode = 0;
+            // continue;
         }
 
         else if (strncmp(Instructions[0], "!!", 2) == 0){
-            mode = checkCm(processes, Instructions[1]); // get like !!
-            continue;
+            mode = 1; // get like !!
         }
+
         else{
             mode = checkCm(processes, Instructions[0]); // Check the commands and runs it
         }
 
         // Operations for dealing with cmd list.
-        if (mode == 1)
+        if (mode == 1) // skip
         { // case where cpy is not req.
             continue;
         }

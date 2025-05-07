@@ -49,6 +49,8 @@ int spawn_processes(process_map* processes, char* instruct, pid_t child_pid){
 
     char path[100] = "/bin/"; //mac
     // char path[100] = "/use/bin"; // linux
+    prog_arv[0] = strcat(path, command);
+
     int index = 1;
     while (command != NULL){
         command = strtok(NULL, " ");
@@ -61,10 +63,10 @@ int spawn_processes(process_map* processes, char* instruct, pid_t child_pid){
     signal(SIGTSTP, SIG_IGN);
 
     child_pid = fork();
-    add_pid_to_map(processes, child_pid, is_foreground);
+    add_pid_to_map(processes, child_pid, is_background);
 
     if (child_pid == 0){
-
+        printf("hi\n");
         signal(SIGTTOU, SIG_IGN);
         signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL);
@@ -79,19 +81,19 @@ int spawn_processes(process_map* processes, char* instruct, pid_t child_pid){
     }
     setpgid(child_pid, child_pid);
     int status;
-    if (is_background == 1){
+    if (is_background == 0){
         tcsetpgrp(STDIN_FILENO, child_pid);
         waitpid(child_pid, &status, WUNTRACED);
 
-        remove_pid_map(child_pid);
+        remove_pid_map(processes, child_pid);
         tcsetpgrp(STDIN_FILENO, getpid());
     }
-    else if (is_background == 0){
+    else if (is_background == 1){
         printf("%d is running.\n", getpid());
     }
 
     dup2(reset_stdout, STDOUT_FILENO);
-    ddup2(reset_stdin, STDIN_FILENO);
+    dup2(reset_stdin, STDIN_FILENO);
 
     // 1 is if program dne, 2 ping is found but error
     if (WIFEXITED(status)){ // if true then it means it exited normally
