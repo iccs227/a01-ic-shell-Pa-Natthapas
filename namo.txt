@@ -1,0 +1,12 @@
+total 520
+-rwxr-xr-x  1 natthapasngamsukhonratana  staff     117 May  8 15:30 cat.txt
+-rw-r--r--  1 natthapasngamsukhonratana  staff     598 May  8 08:08 i_o_redirect.cpp
+-rw-r--r--  1 natthapasngamsukhonratana  staff     211 May  7 20:12 i_o_redirect.h
+-rwxr-xr-x  1 natthapasngamsukhonratana  staff  229352 May  9 16:07 icsh
+-rw-r--r--  1 natthapasngamsukhonratana  staff    3845 May  8 22:59 icsh.cpp
+-rw-r--r--  1 natthapasngamsukhonratana  staff     585 May  8 23:02 icsh.h
+-rwxr-xr-x  1 natthapasngamsukhonratana  staff       0 May  9 16:07 namo.txt
+-rw-r--r--  1 natthapasngamsukhonratana  staff    6772 May  9 16:07 spawn_processes.cpp
+-rw-r--r--  1 natthapasngamsukhonratana  staff     321 May  8 17:01 spawn_processes.h
+-rw-r--r--  1 natthapasngamsukhonratana  staff       0 May  7 16:33 string_format.cpp
+-rwxr-xr-x  1 natthapasngamsukhonratana  staff     127 May  9 16:07 tawan.txt

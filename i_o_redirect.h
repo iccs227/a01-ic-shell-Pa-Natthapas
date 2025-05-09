@@ -1,9 +1,15 @@
 #ifndef I_O_REDIRECT_H
 #define I_O_REDIRECT_H
 
-int redirection(char* instruct);
-void output(char filename[]);
-void input(char filename[]);
-char* parse_redirect(char* instruct);
+#include <iostream>
+#include <stack>
+#include <string>
+#include <sstream>
+
+
+using namespace std;
+
+void output(string filename);
+void input(string filename);
 
 #endif
