@@ -10,7 +10,6 @@
 #include <signal.h>
 #include <fcntl.h>
 
-
 #include <map>
 #include <vector>
 #include <iostream>
@@ -18,12 +17,16 @@
 #include <string>
 #include <sstream>
 #include "spawn_processes.h"
+#include "jobs.h"
+#include "signal.h"
 
 extern pid_t child_pid;
+extern pid_t shell_pid;
 extern vector<vector<int> > pid_vector;
 extern stack<string> command_stack;
 extern map<int, string> pid_to_command;
 extern map<int, int> ground_state;
+extern vector<job> job_vec;
 
 void check_command(string instruct);
 int main(int argc, char *argv[]);

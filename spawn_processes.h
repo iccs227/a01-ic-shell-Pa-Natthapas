@@ -10,6 +10,8 @@
 
 using namespace std;
 
+extern pid_t foreground_pid;
+
 void bring_foreground_from_background(string instruct);
 void bring_stop_to_background(string instruct);
 int spawn_processes(string instruction);
