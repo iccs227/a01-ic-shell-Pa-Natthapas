@@ -25,69 +25,85 @@ using namespace std;
 pid_t foreground_pid = -1;
 
 void bring_foreground_from_background(string instruct){ // brings the pid up to the foreground. Only on running process, ground_state = 0
-    int pid;
+    int pid = -1;
     int percent_index = instruct.find('%');//%
     int pid_order;
+    string cmd;
     if (percent_index == -1){
         cout << "index not specified.\n";
         return;
     } else {
         pid_order = stoi(instruct.substr(percent_index+1));
     }
-
-    if (pid_order >= pid_vector.size()){
-        cout << "out of range.\n";
+    
+    for (int i = 0; i<job_vec.size(); i++){
+        if (job_vec[i].order == pid_order){
+            pid = job_vec[i].pid;
+            cmd = job_vec[i].command;
+            job_vec[i].is_suspended = false;
+            break;
+        }
+    }
+    if (pid == -1){
+        cout << "Process Not found.\n";
         return;
     }
 
-    if (ground_state[pid_order] == 0){
-        ground_state[pid_order] = 1;
-        pid = pid_vector[pid_order][0];
-        string command = pid_to_command.at(pid);
-        cout << command;
-        ground_state[pid] = 0;
-        for (int i = 0; i < pid_vector.size(); i++){ // remove dead_child.
-            if (pid_vector[i][0] == pid){
-                pid_vector[i][2] = 1;
+    cout << "[" << pid_order << "] " << pid << " Is running in the foreground\t\t" << cmd << "\n";
+    int status;
+    kill(pid, SIGCONT);
+    tcsetpgrp(STDIN_FILENO, pid);
+    foreground_pid = pid;
+    waitpid(pid, &status, WUNTRACED); // wait for it
+
+    foreground_pid = -1;
+
+    if (WIFSTOPPED(status)){
+        cout <<"hi"; 
+        for (int i = 0; i < job_vec.size(); i++){
+            if (job_vec[i].pid == child_pid){
+                job_vec[i].is_suspended = true;
             }
         }
-        kill(pid, SIGCONT);
-        return;
+    } else {
+        for (int i = 0; i < job_vec.size(); i++){
+            if (job_vec[i].pid == child_pid){
+                job_vec.erase(job_vec.begin() + i);
+                job::size--;
+            }
+        }
     }
-
-    string command = pid_to_command.at(pid_vector[pid_order][0]).substr(0, pid_to_command.at(pid_vector[pid_order][0]).size()-1); // Extract the command.
-    cout << "[" << pid_order << "] " << pid_vector[pid_order][0] << "\t\t " << command << "\n";
-    tcsetpgrp(STDIN_FILENO, pid_vector[pid_order][0]);
-    wait(NULL);
-    tcsetpgrp(STDIN_FILENO, getpid()); // set process back.
+    tcsetpgrp(STDIN_FILENO, shell_pid);
 }
 
 void bring_stop_to_background(string instruct){ // 
-    int pid;
+    int pid = -1;
     int percent_index = instruct.find('%');//%
     int pid_order;
+    string cmd;
     if (percent_index == -1){
         cout << "index not specified.\n";
         return;
     } else {
         pid_order = stoi(instruct.substr(percent_index+1));
     }
-
-    if (pid_order >= pid_vector.size()){
-        cout << "out of range.\n";
+    
+    for (int i = 0; i<job_vec.size(); i++){
+        if (job_vec[i].order == pid_order){
+            pid = job_vec[i].pid;
+            cmd = job_vec[i].command;
+            job_vec[i].is_suspended = false;
+            job_vec[i].is_background = true;
+            break;
+        }
+    }
+    if (pid == -1){
+        cout << "Process Not found.\n";
         return;
     }
      
-    pid = pid_vector[pid_order][0];
-    string command = pid_to_command.at(pid);
-    cout << command << " &\n";
-    ground_state[pid] = 0;
-    for (int i = 0; i < pid_vector.size(); i++){ // remove dead_child.
-        if (pid_vector[i][0] == pid){
-            pid_vector[i][2] = 1;
-        }
-    }
     kill(pid, SIGCONT);
+    cout << cmd << " & " << "Is now running in the background\n";
 }
 
 void cout_vec(vector<int> vec){
@@ -108,7 +124,6 @@ int is_redirect(string instruction){
     }
     return 0;
 }
-
 
 int spawn_processes(string instruction){
     string cpy = instruction;
@@ -165,22 +180,30 @@ int spawn_processes(string instruction){
     prog_arv[index] = NULL;
 
     int size = pid_vector.size();
-    
-    int child_pid = fork();
+
+    job a_job;
+
+    child_pid = fork();
     if (!is_bg){
         foreground_pid = child_pid;
     }
-    
+    job::size++; // test
+    a_job.pid = child_pid; // test
+    a_job.order = job::size;
+    a_job.is_background = is_bg; // test
+    a_job.is_suspended = false;
+    a_job.command = instruction;
+    job_vec.push_back(a_job);
 
     if (child_pid == 0){
         setpgid(0, 0);
+        // tcsetpgrp(STDIN_FILENO, getpid());
         
         signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL); 
 
         int fail_flag = execvp(prog_arv[0], prog_arv); 
 
-    
         if (fail_flag == -1){ //remove command if it is not found
             for (int i = 0; i < job_vec.size(); i++){ // test
                 if (job_vec[i].pid == child_pid){
@@ -192,41 +215,35 @@ int spawn_processes(string instruction){
     }
     setpgid(child_pid, child_pid);
 
-    job a_job;
-    a_job.pid = child_pid; // test
-    a_job.size++; // test
-    a_job.is_background = is_bg; // test
-    a_job.is_suspended = false;
-    job_vec.push_back(a_job);
+    if (!is_bg){
+        tcsetpgrp(STDIN_FILENO, child_pid);
+        int status;
+        waitpid(child_pid, &status, WUNTRACED);
+        foreground_pid = -1;
+        
+        if (WIFSTOPPED(status)){
+            for (int i = 0; i < job_vec.size(); i++){
+                if (job_vec[i].pid == child_pid){
+                    job_vec[i].is_suspended = true;
+                }
+            }
+            tcsetpgrp(STDIN_FILENO, shell_pid);
+        } else {
+            for (int i = 0; i < job_vec.size(); i++){
+                if (job_vec[i].pid == child_pid){
+                    job_vec.erase(job_vec.begin() + i);
+                    job::size--;
+                }
+            }
+            tcsetpgrp(STDIN_FILENO, shell_pid);
+        }
+    } else {
+        cout << "[" << a_job.size << "] " << child_pid << " is running.\n";
+    }
 
-    // if (!is_bg){
-    //     tcsetpgrp(STDIN_FILENO, child_pid);
-    //     int status;
-    //     waitpid(-1, &status, WUNTRACED);
-    //     foreground_pid = -1;
-
-    //     if (WIFSTOPPED(status)){
-    //         for (int i = 0; i < job_vec.size(); i++){
-    //             if (job_vec[i].pid == child_pid){
-    //                 job_vec[i].is_suspended = true;
-    //             }
-    //         }
-    //         tcsetpgrp(STDIN_FILENO, shell_pid);
-    //     }
-
-    // }
-    
     dup2(reset_stdout, STDOUT_FILENO); // Reset stdin/out
     dup2(reset_stdin, STDIN_FILENO);
-    tcsetpgrp(STDIN_FILENO, shell_pid);
+    tcsetpgrp(STDIN_FILENO, getpid());
     
     return 0;
 }   
-
-// void foreground(){
-//     tcsetpgrp(STDIN_FILENO);
-// }
-
-// void background(){
-
-// }

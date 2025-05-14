@@ -97,17 +97,6 @@ void cout_vec_string(vector<string> vec){
 }
 
 void cout_format(){
-    // for (int i = 0;i < pid_vector.size(); i++){ // vector is kept as {pid, order}, map is kept as {pid, command}
-    //     char msg[MAX_CMD_BUFFER];
-    //     int len;
-    //     if (ground_state[pid_vector[i][0]] == 0){ // process is running
-    //         len = snprintf(msg, sizeof(msg), "[%d] %d Running.\t\t %s\n", pid_vector[i][1], pid_vector[i][0], pid_to_command.at(pid_vector[i][0]).c_str());
-    //     }
-    //     else { // is paused
-    //         len = snprintf(msg, sizeof(msg), "[%d] %d Suspended.\t\t %s\n", pid_vector[i][1], pid_vector[i][0], pid_to_command.at(pid_vector[i][0]).c_str());
-    //     }
-    //     write(STDOUT_FILENO, msg, len);
-    // }
     for (int i = 0; i < job_vec.size(); i++){
         job_vec[i].cout_job();
     }
