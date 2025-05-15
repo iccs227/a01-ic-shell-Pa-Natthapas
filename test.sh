@@ -1,4 +1,6 @@
 echo hello
 echo world
 !!
-exit 5
+
+echo hi
+echo hello
