@@ -162,7 +162,8 @@ void check_command(string instruct){
     else {
         int run_command = spawn_processes(instruct);
         if (run_command == -1){
-            cout << "command not found.\n";
+            command_stack.pop();
+            return;
         }
     }
 }

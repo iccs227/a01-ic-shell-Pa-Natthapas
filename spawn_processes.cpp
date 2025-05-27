@@ -197,7 +197,6 @@ int spawn_processes(string instruction){
 
     if (child_pid == 0){
         setpgid(0, 0);
-        // tcsetpgrp(STDIN_FILENO, getpid());
         
         signal(SIGINT, SIG_DFL); // specify default signal action.
         signal(SIGTSTP, SIG_DFL); 
@@ -207,10 +206,12 @@ int spawn_processes(string instruction){
         if (fail_flag == -1){ //remove command if it is not found
             for (int i = 0; i < job_vec.size(); i++){ // test
                 if (job_vec[i].pid == child_pid){
+                    cout << "command not found.\n";
                     job_vec.erase(job_vec.begin() + i);
                     break;
                 }
             }
+            exit(EXIT_FAILURE);
         }
     }
     setpgid(child_pid, child_pid);
