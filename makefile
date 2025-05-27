@@ -5,7 +5,7 @@ BINARY=icsh
 all: icsh
 
 icsh: $(FILES)
-	$(CC) -o $(FILES)
+	$(CC) -o $(BINARY) $(FILES)
 
 # .PHONY: clean
 
