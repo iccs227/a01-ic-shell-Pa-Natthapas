@@ -167,9 +167,7 @@ int spawn_processes(string instruction){
     buffer[sizeof(buffer) - 1] = '\0';
     char* command = strtok(buffer, " ");
 
-    char path[100] = "/bin/"; // mac
-    // char path[100] = "/usr/bin/" // linux
-    prog_arv[0] = strcat(path, command);
+    prog_arv[0] = command;
 
     int index = 1;
     while (command != NULL){
