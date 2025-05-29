@@ -59,7 +59,6 @@ void bring_foreground_from_background(string instruct){ // brings the pid up to 
     foreground_pid = -1;
 
     if (WIFSTOPPED(status)){
-        cout <<"hi"; 
         for (int i = 0; i < job_vec.size(); i++){
             if (job_vec[i].pid == pid){
                 job_vec[i].is_suspended = true;

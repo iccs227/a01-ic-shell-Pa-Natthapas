@@ -26,7 +26,6 @@ using namespace std;
 
 //* Send -> Change the state to suspend -> kill(SIGSTOP) -> The process is still there. */
 void child_tstp_handler(int sig){
-    cout << "hi from ctstp\n";
     int status;
     pid_t sent_pid = waitpid(-1, &status, WUNTRACED);
     cout << sent_pid;
